@@ -359,6 +359,7 @@
       gap:10px;
       padding:10px;
       border-bottom:1px solid var(--line);
+      align-items:center;
     }
     .searchRow input{
       flex:1;
@@ -369,6 +370,24 @@
       color: var(--text);
       outline:none;
       font-size:13px;
+    }
+    .selectAllBox{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.25);
+      font-size:12px;
+      color:rgba(233,238,252,.9);
+      white-space:nowrap;
+    }
+    .selectAllBox input{
+      accent-color: var(--accent);
+    }
+    .selectAllBox label{
+      cursor:pointer;
     }
 
     .chartCanvas{
@@ -607,6 +626,10 @@
       </div>
       <div class="searchRow">
         <input id="tableSearch" type="text" placeholder="Buscar na tabela (ex.: IPTU, ITBI, 1112.50...)" />
+        <div class="selectAllBox">
+          <input id="selectAllFiltered" type="checkbox" />
+          <label for="selectAllFiltered">Selecionar filtradas</label>
+        </div>
         <button class="btn secondary" id="btnExportCSV" style="max-width:220px;">Exportar visão (CSV)</button>
       </div>
       <div style="max-height:420px; overflow:auto;">
@@ -896,6 +919,7 @@ const els = {
   tbody: document.getElementById("tbody"),
   miniLinhas: document.getElementById("miniLinhas"),
   tableSearch: document.getElementById("tableSearch"),
+  selectAllFiltered: document.getElementById("selectAllFiltered"),
   btnExportCSV: document.getElementById("btnExportCSV"),
   bTipo: document.getElementById("bTipo"),
   bMetrica: document.getElementById("bMetrica"),
@@ -1061,6 +1085,11 @@ function applyFilters(){
   if (q) tableRows = tableRows.filter(r => matchesTableQuery(r, q));
 
   return { chartRows, tableRows, mesKey };
+}
+
+function filterTableRows(rows){
+  const q = normalizeText(els.tableSearch.value || "");
+  return q ? rows.filter(r => matchesTableQuery(r, q)) : rows;
 }
 
 function toggleFichaSelection(ficha){
@@ -1570,10 +1599,15 @@ function renderTable(rows, mesKey){
     sorted = sorted.sort((a,b)=> (sumMonth(b, mesKey) - sumMonth(a, mesKey)));
   }
 
-  const q = normalizeText(els.tableSearch.value || "");
-  const filtered = q ? sorted.filter(r => matchesTableQuery(r, q)) : sorted;
+  const filtered = filterTableRows(sorted);
+  const selectable = filtered.filter(r => (r.ficha ?? "").toString().trim());
+  const anySelected = selectable.some(r => SELECTED_FICHAS.has(r.ficha));
+  const allSelected = selectable.length && selectable.every(r => SELECTED_FICHAS.has(r.ficha));
 
   els.miniLinhas.textContent = `${filtered.length} linhas`;
+  els.selectAllFiltered.disabled = !selectable.length;
+  els.selectAllFiltered.checked = Boolean(allSelected);
+  els.selectAllFiltered.indeterminate = Boolean(anySelected && !allSelected);
   els.tbody.innerHTML = "";
 
   const frag = document.createDocumentFragment();
@@ -1742,6 +1776,18 @@ els.btnLimpar.addEventListener("click", ()=>{
 
 tableSortButtons.forEach(btn => {
   btn.addEventListener("click", () => toggleSort(btn.dataset.sort));
+});
+
+els.selectAllFiltered.addEventListener("change", ()=>{
+  const { tableRows } = applyFilters();
+  const filtered = filterTableRows(tableRows);
+  const selectable = filtered.filter(r => (r.ficha ?? "").toString().trim());
+  if (els.selectAllFiltered.checked){
+    for (const r of selectable) SELECTED_FICHAS.add(r.ficha);
+  } else {
+    for (const r of selectable) SELECTED_FICHAS.delete(r.ficha);
+  }
+  updateUI();
 });
 
 els.quickSearch.addEventListener("input", ()=>{
