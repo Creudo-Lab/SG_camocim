@@ -148,6 +148,32 @@
       margin:8px 6px 0;
     }
 
+    .chipList{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      margin-top:8px;
+    }
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      font-size:11px;
+      color:rgba(233,238,252,.9);
+    }
+    .chip button{
+      border:none;
+      background: transparent;
+      color:rgba(233,238,252,.75);
+      cursor:pointer;
+      font-weight:700;
+      padding:0;
+    }
+
     .pill{
       display:inline-flex;
       gap:8px;
@@ -291,11 +317,19 @@
       color:rgba(233,238,252,.90);
     }
     tbody tr:hover{ background: rgba(255,255,255,.03); }
+    tbody tr.selected{ background: rgba(110,231,255,.10); }
 
     .clickFilter{
       cursor:pointer;
     }
     .clickFilter:hover{
+      color: var(--accent);
+      text-decoration: underline;
+    }
+    .clickSelect{
+      cursor:pointer;
+    }
+    .clickSelect:hover{
       color: var(--accent);
       text-decoration: underline;
     }
@@ -325,6 +359,8 @@
       background: rgba(0,0,0,.12);
       border:1px solid rgba(255,255,255,.08);
     }
+
+    .chartClickable{ cursor:pointer; }
 
     .errorBox{
       margin: 0 6px 14px;
@@ -414,6 +450,15 @@
     <div class="ctrl">
       <label>Pesquisa rápida (filtra tabela)</label>
       <input id="quickSearch" type="text" placeholder="Ex.: IPTU, ITBI, IRRF..." />
+    </div>
+
+    <div class="ctrl">
+      <label>Fichas selecionadas</label>
+      <div class="row" style="align-items:center;">
+        <div class="hint" style="margin:0;">Clique na tabela ou no gráfico para marcar.</div>
+        <button class="btn secondary" id="btnLimparFichas" style="max-width:140px;">Limpar</button>
+      </div>
+      <div class="chipList" id="fichaChips"></div>
     </div>
 
     <div class="pill" id="pillStatus">Nenhum arquivo carregado</div>
@@ -777,6 +822,7 @@ function normalizeDataset(raw){
 ================================*/
 let DATA = [];
 let META = { fonte:"—", atualizado:"—" };
+let SELECTED_FICHAS = new Set();
 
 const els = {
   municipio: document.getElementById("municipio"),
@@ -788,6 +834,8 @@ const els = {
   dimensao: document.getElementById("dimensao"),
   tipoSerie: document.getElementById("tipoSerie"),
   quickSearch: document.getElementById("quickSearch"),
+  btnLimparFichas: document.getElementById("btnLimparFichas"),
+  fichaChips: document.getElementById("fichaChips"),
   pillStatus: document.getElementById("pillStatus"),
   titulo: document.getElementById("titulo"),
   subtitulo: document.getElementById("subtitulo"),
@@ -849,6 +897,7 @@ function clearError(){ showError(""); }
       const obj = JSON.parse(saved);
       DATA = obj.data || [];
       META = obj.meta || META;
+      SELECTED_FICHAS = new Set(obj.selectedFichas || []);
       els.municipio.value = obj.municipio || "";
       els.ano.value = obj.ano || "";
       els.mesFoco.value = obj.mesFoco || "janeiro";
@@ -866,6 +915,7 @@ function clearError(){ showError(""); }
   mountCanvas("chartBuilder");
   setupChartSerieTooltip();
   setupChartTopTooltip();
+  setupChartTopSelection();
 
   updateUI();
   window.addEventListener("resize", ()=>updateUI());
@@ -875,6 +925,7 @@ function saveState(){
   const obj = {
     data: DATA,
     meta: META,
+    selectedFichas: Array.from(SELECTED_FICHAS),
     municipio: els.municipio.value,
     ano: els.ano.value,
     mesFoco: els.mesFoco.value,
@@ -930,10 +981,60 @@ function applyFilters(){
   const quick = normalizeText(els.quickSearch.value || "");
   const tableQ = normalizeText(els.tableSearch.value || "");
   const q = quick || tableQ;
+  const selected = SELECTED_FICHAS;
 
   let rows = DATA.slice();
+  if (selected.size){
+    rows = rows.filter(r => selected.has(r.ficha));
+  }
   if (q) rows = rows.filter(r => r._search.includes(q));
   return { rows, mesKey };
+}
+
+function toggleFichaSelection(ficha){
+  if (!ficha) return;
+  if (SELECTED_FICHAS.has(ficha)) SELECTED_FICHAS.delete(ficha);
+  else SELECTED_FICHAS.add(ficha);
+  updateUI();
+}
+
+function clearFichaSelection(){
+  if (!SELECTED_FICHAS.size) return;
+  SELECTED_FICHAS.clear();
+  updateUI();
+}
+
+function renderFichaChips(){
+  const container = els.fichaChips;
+  container.innerHTML = "";
+  if (!SELECTED_FICHAS.size){
+    const empty = document.createElement("div");
+    empty.className = "hint";
+    empty.style.margin = "0";
+    empty.textContent = "Nenhuma ficha selecionada.";
+    container.appendChild(empty);
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  for (const ficha of Array.from(SELECTED_FICHAS)){
+    const chip = document.createElement("div");
+    chip.className = "chip";
+    chip.textContent = ficha;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.setAttribute("aria-label", `Remover ficha ${ficha}`);
+    btn.textContent = "×";
+    btn.addEventListener("click", () => {
+      SELECTED_FICHAS.delete(ficha);
+      updateUI();
+    });
+
+    chip.appendChild(btn);
+    frag.appendChild(chip);
+  }
+  container.appendChild(frag);
 }
 
 /* ==============================
@@ -1138,10 +1239,10 @@ function setupChartTopTooltip(){
     const my = event.clientY - rect.top;
     const hit = chartTopState.rows.find(row => (
       row.isTrimmed &&
-      mx >= row.x &&
-      mx <= row.x + row.w &&
-      my >= row.y &&
-      my <= row.y + row.h
+      mx >= row.labelRect.x &&
+      mx <= row.labelRect.x + row.labelRect.w &&
+      my >= row.labelRect.y &&
+      my <= row.labelRect.y + row.labelRect.h
     ));
     if (!hit) return hideTooltip();
     chartTopTooltip.textContent = hit.label;
@@ -1151,6 +1252,34 @@ function setupChartTopTooltip(){
   });
 
   container.addEventListener("mouseleave", hideTooltip);
+}
+function setupChartTopSelection(){
+  const container = document.getElementById("chartTop");
+  if (!container) return;
+
+  container.addEventListener("click", (event) => {
+    if (els.dimensao.value !== "ficha") return;
+    const canvas = getCanvas("chartTop");
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = event.clientX - rect.left;
+    const my = event.clientY - rect.top;
+    const hit = chartTopState.rows.find(row => {
+      const inLabel =
+        mx >= row.labelRect.x &&
+        mx <= row.labelRect.x + row.labelRect.w &&
+        my >= row.labelRect.y &&
+        my <= row.labelRect.y + row.labelRect.h;
+      const inBar =
+        mx >= row.barRect.x &&
+        mx <= row.barRect.x + row.barRect.w &&
+        my >= row.barRect.y &&
+        my <= row.barRect.y + row.barRect.h;
+      return inLabel || inBar;
+    });
+    if (!hit) return;
+    toggleFichaSelection(hit.label);
+  });
 }
 function drawHBar(ctx, plot, labels, values){
   const {x,y,w,h} = plot;
@@ -1176,15 +1305,18 @@ function drawHBar(ctx, plot, labels, values){
     rows.push({
       label: name,
       isTrimmed,
-      x,
-      y: yy - rowH / 2,
-      w: textW,
-      h: rowH,
+      labelRect: {
+        x,
+        y: yy - rowH / 2,
+        w: textW,
+        h: rowH,
+      },
     });
 
     const bx = x + w*0.34;
     ctx.fillStyle = "rgba(110,231,255,.60)";
     ctx.fillRect(bx, yy-6, barW, 12);
+    rows[rows.length - 1].barRect = {x: bx, y: yy - 6, w: barW, h: 12};
 
     ctx.fillStyle = "rgba(233,238,252,.70)";
     ctx.textAlign = "right";
@@ -1223,6 +1355,7 @@ function renderTop(rows, mesKey){
 
   const dim = els.dimensao.value;
   els.miniDim.textContent = dim === "natureza" ? "Natureza" : dim === "ficha" ? "Ficha" : "Nome";
+  canvas.classList.toggle("chartClickable", dim === "ficha");
 
   const grouped = groupSum(rows, dim, mesKey, "acum")
     .sort((a,b)=>b.v-a.v)
@@ -1363,10 +1496,13 @@ function renderTable(rows, mesKey){
   const frag = document.createDocumentFragment();
   for (const r of filtered.slice(0, 900)){
     const tr = document.createElement("tr");
+    if (SELECTED_FICHAS.has(r.ficha)) tr.classList.add("selected");
     const acum = sumAcum(r, mesKey);
 
     const tdFicha = document.createElement("td");
     tdFicha.textContent = r.ficha ?? "";
+    tdFicha.dataset.ficha = r.ficha ?? "";
+    tdFicha.classList.add("clickSelect");
 
     const tdNatureza = document.createElement("td");
     tdNatureza.textContent = r.natureza ?? "";
@@ -1454,6 +1590,8 @@ function updateUI(){
   const { rows, mesKey } = applyFilters();
   els.pillStatus.textContent = DATA.length ? `Base carregada • ${DATA.length} linhas` : "Nenhum arquivo carregado";
 
+  renderFichaChips();
+
   updateKPIs(rows, mesKey);
   renderSerie(rows);
   renderTop(rows, mesKey);
@@ -1508,6 +1646,7 @@ els.btnLimpar.addEventListener("click", ()=>{
   if (!confirm("Tem certeza que deseja limpar os dados salvos?")) return;
   DATA = [];
   META = { fonte:"—", atualizado:"—" };
+  SELECTED_FICHAS.clear();
   localStorage.removeItem("receitas_dashboard_offline_v2");
   els.fileInput.value = "";
   updateUI();
@@ -1524,6 +1663,13 @@ els.quickSearch.addEventListener("input", ()=>{
 });
 
 els.tbody.addEventListener("click", (event)=>{
+  const selectTarget = event.target.closest(".clickSelect");
+  if (selectTarget && els.tbody.contains(selectTarget)){
+    const ficha = selectTarget.dataset.ficha || selectTarget.textContent;
+    toggleFichaSelection((ficha || "").toString().trim());
+    return;
+  }
+
   const target = event.target.closest(".clickFilter");
   if (!target || !els.tbody.contains(target)) return;
   const nome = target.dataset.nome || target.textContent;
@@ -1534,6 +1680,8 @@ els.tbody.addEventListener("click", (event)=>{
   els.quickSearch.select();
   updateUI();
 });
+
+els.btnLimparFichas.addEventListener("click", clearFichaSelection);
 
 els.btnExportCSV.addEventListener("click", ()=>{
   if (!DATA.length){
@@ -1584,4 +1732,3 @@ els.btnExportCSV.addEventListener("click", ()=>{
 
 </body>
 </html>
-
