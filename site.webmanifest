@@ -1,0 +1,21 @@
+{
+  "name": "Receitas Municipais - Camocim",
+  "short_name": "Receitas",
+  "start_url": "/sg-camocim/SG_CAMOCIM.html",
+  "scope": "/sg-camocim/",
+  "display": "standalone",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "icons": [
+    {
+      "src": "/sg-camocim/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/sg-camocim/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

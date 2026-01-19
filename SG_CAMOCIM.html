@@ -1,0 +1,1414 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard Gerencial de Receitas - Município</title>
+
+  <!-- PWA + Ícones (para instalar como App no GitHub Pages/HTTPS) -->
+  <link rel="manifest" href="./site.webmanifest">
+  <meta name="theme-color" content="#0b1020">
+
+  <link rel="icon" href="./favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="icon" type="image/png" sizes="96x96" href="./favicon-96x96.png">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#0f1730;
+      --panel2:#0c142b;
+      --muted:#a7b0c3;
+      --text:#e9eefc;
+      --line:rgba(255,255,255,.08);
+      --accent:#6ee7ff;
+      --accent2:#8b5cf6;
+      --good:#22c55e;
+      --warn:#fbbf24;
+      --bad:#ef4444;
+      --shadow: 0 14px 40px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: system-ui, Segoe UI, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 20% 0%, rgba(110,231,255,.10), transparent 60%),
+                  radial-gradient(1200px 800px at 90% 20%, rgba(139,92,246,.12), transparent 55%),
+                  linear-gradient(180deg, var(--bg), #060a15);
+      color:var(--text);
+    }
+
+    .app{
+      display:grid;
+      grid-template-columns: 320px 1fr;
+      min-height:100vh;
+    }
+
+    .sidebar{
+      background: linear-gradient(180deg, rgba(255,255,255,.03), transparent 40%),
+                  linear-gradient(180deg, var(--panel), var(--panel2));
+      border-right:1px solid var(--line);
+      padding:18px;
+      position:sticky;
+      top:0;
+      height:100vh;
+      overflow:auto;
+    }
+
+    .brand{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      padding:10px 10px 14px;
+      border-bottom:1px solid var(--line);
+      margin-bottom:14px;
+    }
+    .logo{
+      width:42px;height:42px;border-radius:14px;
+      background:
+        radial-gradient(18px 18px at 30% 30%, rgba(110,231,255,.75), transparent 60%),
+        radial-gradient(22px 22px at 70% 70%, rgba(139,92,246,.7), transparent 62%),
+        linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow: 0 10px 26px rgba(0,0,0,.35);
+    }
+    .brand h1{ font-size:14px; margin:0; font-weight:700; }
+    .brand p{ margin:2px 0 0; font-size:12px; color:var(--muted); }
+
+    .sectionTitle{
+      margin:16px 6px 8px;
+      font-size:11px;
+      color:rgba(233,238,252,.75);
+      letter-spacing:.14em;
+      text-transform:uppercase;
+    }
+
+    .ctrl{
+      background: rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      padding:10px;
+      margin-bottom:10px;
+    }
+    .ctrl label{
+      display:block;
+      font-size:12px;
+      color:rgba(233,238,252,.85);
+      margin:0 0 6px;
+      font-weight:600;
+    }
+    .ctrl input[type="text"], .ctrl select{
+      width:100%;
+      padding:10px 10px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+      color: var(--text);
+      outline:none;
+      font-size:13px;
+    }
+    .ctrl input[type="file"]{
+      width:100%;
+      color:rgba(233,238,252,.85);
+      font-size:12px;
+    }
+    .row{ display:flex; gap:10px; }
+    .row > * { flex:1; }
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:100%;
+      padding:11px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.14);
+      background: linear-gradient(135deg, rgba(110,231,255,.20), rgba(139,92,246,.18));
+      color:var(--text);
+      font-weight:700;
+      cursor:pointer;
+      transition: transform .06s ease, opacity .2s ease;
+      box-shadow: 0 12px 28px rgba(0,0,0,.30);
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn.secondary{
+      background: rgba(255,255,255,.04);
+      box-shadow:none;
+      font-weight:600;
+    }
+
+    .hint{
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.35;
+      margin:8px 6px 0;
+    }
+
+    .pill{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      padding:8px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.03);
+      color:rgba(233,238,252,.9);
+      font-size:12px;
+      margin:8px 6px 0;
+    }
+
+    .main{
+      padding:18px 18px 26px;
+      overflow:auto;
+    }
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:16px;
+      padding:8px 6px 14px;
+    }
+    .titleBlock h2{ margin:0; font-size:18px; }
+    .titleBlock .sub{ margin:6px 0 0; color:var(--muted); font-size:12px; }
+    .status{ text-align:right; color:var(--muted); font-size:12px; }
+
+    .gridKpis{
+      display:grid;
+      grid-template-columns: repeat(5, minmax(180px, 1fr));
+      gap:12px;
+      margin: 10px 6px 14px;
+    }
+    .kpi{
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      padding:14px;
+      box-shadow: var(--shadow);
+      min-height: 92px;
+    }
+    .kpi .label{ font-size:12px; color:rgba(233,238,252,.78); margin:0 0 8px; font-weight:600; }
+    .kpi .value{ font-size:18px; font-weight:800; margin:0; }
+    .kpi .delta{ margin:8px 0 0; font-size:12px; color:var(--muted); }
+
+    .gridCharts{
+      display:grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap:12px;
+      margin: 0 6px 14px;
+    }
+    .panel{
+      background: rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .panelHeader{
+      padding:12px 14px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .panelHeader h3{ margin:0; font-size:13px; }
+    .panelHeader .mini{ color:var(--muted); font-size:12px; }
+    .panelBody{ padding:10px 10px 8px; }
+
+    .builder{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:10px;
+      padding:10px;
+    }
+    .builder .bctrl{
+      background: rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      padding:10px;
+    }
+    .builder label{
+      display:block;
+      font-size:11px;
+      color:rgba(233,238,252,.78);
+      letter-spacing:.10em;
+      text-transform:uppercase;
+      margin-bottom:6px;
+    }
+    .builder select{
+      width:100%;
+      padding:10px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+      outline:none;
+      font-size:13px;
+    }
+
+    .tableWrap{ margin: 0 6px; }
+    table{ width:100%; border-collapse: collapse; font-size:12px; }
+    thead th{
+      text-align:left;
+      padding:10px 10px;
+      color:rgba(233,238,252,.85);
+      border-bottom:1px solid var(--line);
+      position:sticky;
+      top:0;
+      background: rgba(12,18,40,.95);
+      backdrop-filter: blur(8px);
+      z-index:1;
+    }
+    tbody td{
+      padding:10px 10px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      color:rgba(233,238,252,.90);
+    }
+    tbody tr:hover{ background: rgba(255,255,255,.03); }
+
+    .searchRow{
+      display:flex;
+      gap:10px;
+      padding:10px;
+      border-bottom:1px solid var(--line);
+    }
+    .searchRow input{
+      flex:1;
+      padding:10px 10px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+      outline:none;
+      font-size:13px;
+    }
+
+    .chartCanvas{
+      width:100%;
+      height:100%;
+      display:block;
+      border-radius: 14px;
+      background: rgba(0,0,0,.12);
+      border:1px solid rgba(255,255,255,.08);
+    }
+
+    .errorBox{
+      margin: 0 6px 14px;
+      padding:12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(239,68,68,.35);
+      background: rgba(239,68,68,.10);
+      color: rgba(233,238,252,.92);
+      display:none;
+      white-space:pre-wrap;
+      line-height:1.35;
+      font-size:12px;
+    }
+
+    @media (max-width: 1280px){
+      .gridKpis{ grid-template-columns: repeat(3, minmax(180px, 1fr)); }
+      .gridCharts{ grid-template-columns: 1fr; }
+      .builder{ grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 980px){
+      .app{ grid-template-columns: 1fr; }
+      .sidebar{ position:relative; height:auto; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>Receitas Municipais</h1>
+        <p>Dashboard Gerencial (HTML)</p>
+      </div>
+    </div>
+
+    <div class="sectionTitle">Fonte de dados</div>
+
+    <div class="ctrl">
+      <label>Nome do município</label>
+      <input id="municipio" type="text" placeholder="Ex.: Camocim de São Félix" />
+    </div>
+
+    <div class="ctrl">
+      <label>Upload do arquivo (CSV)</label>
+      <input id="fileInput" type="file" accept=".csv,.txt" />
+      <div class="hint">
+        Use CSV do Excel (geralmente separado por <b>;</b>).
+        Cabeçalho esperado: ficha | natureza | nome | orçado | janeiro..dezembro
+      </div>
+    </div>
+
+    <button class="btn" id="btnProcessar">Carregar & Atualizar</button>
+    <button class="btn secondary" id="btnLimpar" style="margin-top:10px;">Limpar dados salvos</button>
+
+    <div class="sectionTitle">Filtros</div>
+
+    <div class="ctrl row">
+      <div>
+        <label>Ano (opcional)</label>
+        <input id="ano" type="text" placeholder="Ex.: 2025" />
+      </div>
+      <div>
+        <label>Mês foco</label>
+        <select id="mesFoco"></select>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label>Dimensão (Top / Agrupamentos)</label>
+      <select id="dimensao">
+        <option value="natureza">Natureza da Receita</option>
+        <option value="ficha">Ficha</option>
+        <option value="nome">Nome da Ficha</option>
+      </select>
+    </div>
+
+    <div class="ctrl">
+      <label>Tipo (Receita por mês)</label>
+      <select id="tipoSerie">
+        <option value="line">Linha</option>
+        <option value="bar">Barras</option>
+      </select>
+    </div>
+
+    <div class="ctrl">
+      <label>Pesquisa rápida (filtra tabela)</label>
+      <input id="quickSearch" type="text" placeholder="Ex.: IPTU, ITBI, IRRF..." />
+    </div>
+
+    <div class="pill" id="pillStatus">Nenhum arquivo carregado</div>
+    <div class="hint">Tudo roda local no seu navegador (offline).</div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="titleBlock">
+        <h2 id="titulo">Dashboard de Receitas</h2>
+        <div class="sub" id="subtitulo">Faça upload do arquivo para iniciar.</div>
+      </div>
+      <div class="status">
+        <div id="statusArquivo">Fonte: —</div>
+        <div id="statusAtualizacao">Atualização: —</div>
+      </div>
+    </div>
+
+    <div class="errorBox" id="errorBox"></div>
+
+    <section class="gridKpis">
+      <div class="kpi">
+        <div class="label">Orçado (Total)</div>
+        <div class="value" id="kpiOrcado">R$ 0,00</div>
+        <div class="delta" id="kpiOrcadoObs">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Arrecadado (Ano)</div>
+        <div class="value" id="kpiArrecAno">R$ 0,00</div>
+        <div class="delta" id="kpiArrecAnoObs">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Execução (% Orçado)</div>
+        <div class="value" id="kpiExec">0,00%</div>
+        <div class="delta" id="kpiExecObs">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Mês selecionado</div>
+        <div class="value" id="kpiMes">R$ 0,00</div>
+        <div class="delta" id="kpiMesObs">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Variação vs mês anterior</div>
+        <div class="value" id="kpiVar">—</div>
+        <div class="delta" id="kpiVarObs">—</div>
+      </div>
+    </section>
+
+    <section class="gridCharts">
+      <div class="panel">
+        <div class="panelHeader">
+          <h3>Receitas por mês (Total)</h3>
+          <div class="mini" id="miniPeriodo">jan..dez</div>
+        </div>
+        <div class="panelBody">
+          <div id="chartSerie" style="height:360px;"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panelHeader">
+          <h3>Top receitas (por dimensão)</h3>
+          <div class="mini" id="miniDim">Natureza</div>
+        </div>
+        <div class="panelBody">
+          <div id="chartTop" style="height:360px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" style="margin:0 6px 14px;">
+      <div class="panelHeader">
+        <h3>Construtor de visualização</h3>
+        <div class="mini">Escolha o insight (métrica x dimensão)</div>
+      </div>
+      <div class="builder">
+        <div class="bctrl">
+          <label>Tipo</label>
+          <select id="bTipo">
+            <option value="bar">Barras</option>
+            <option value="line">Linha</option>
+            <option value="barstack">Barras empilhadas</option>
+          </select>
+        </div>
+        <div class="bctrl">
+          <label>Métrica</label>
+          <select id="bMetrica">
+            <option value="mes">Arrecadado no mês foco</option>
+            <option value="acum">Arrecadado acumulado (ano)</option>
+            <option value="orc">Orçado</option>
+            <option value="exec">% Execução (acum/orçado)</option>
+          </select>
+        </div>
+        <div class="bctrl">
+          <label>Eixo X</label>
+          <select id="bEixo">
+            <option value="dim">Dimensão selecionada (sidebar)</option>
+            <option value="meses">Meses (jan..dez)</option>
+          </select>
+        </div>
+        <div class="bctrl">
+          <label>Agrupar por</label>
+          <select id="bAgrupar">
+            <option value="none">Sem grupos</option>
+            <option value="natureza">Natureza</option>
+            <option value="ficha">Ficha</option>
+          </select>
+        </div>
+      </div>
+      <div class="panelBody" style="padding-top:0;">
+        <div id="chartBuilder" style="height:420px;"></div>
+      </div>
+    </section>
+
+    <section class="panel tableWrap">
+      <div class="panelHeader">
+        <h3>Tabela detalhada</h3>
+        <div class="mini" id="miniLinhas">0 linhas</div>
+      </div>
+      <div class="searchRow">
+        <input id="tableSearch" type="text" placeholder="Buscar na tabela (ex.: IPTU, ITBI, 1112.50...)" />
+        <button class="btn secondary" id="btnExportCSV" style="max-width:220px;">Exportar visão (CSV)</button>
+      </div>
+      <div style="max-height:420px; overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Ficha</th>
+              <th>Natureza</th>
+              <th>Nome</th>
+              <th>Orçado</th>
+              <th id="thMesFoco">Mês</th>
+              <th>Acumulado</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="hint" style="margin:12px 6px 0;">
+      Dica: se o Excel gerar CSV com <b>;</b>, este dashboard detecta automaticamente.
+    </div>
+  </main>
+</div>
+
+<script>
+/* ==============================
+   Meses + utilitários
+================================*/
+const MONTHS = [
+  {key:"janeiro", label:"Janeiro", aliases:["janeiro","jan"]},
+  {key:"fevereiro", label:"Fevereiro", aliases:["fevereiro","fev"]},
+  {key:"marco", label:"Março", aliases:["marco","março","mar"]},
+  {key:"abril", label:"Abril", aliases:["abril","abr"]},
+  {key:"maio", label:"Maio", aliases:["maio","mai"]},
+  {key:"junho", label:"Junho", aliases:["junho","jun"]},
+  {key:"julho", label:"Julho", aliases:["julho","jul"]},
+  {key:"agosto", label:"Agosto", aliases:["agosto","ago"]},
+  {key:"setembro", label:"Setembro", aliases:["setembro","set"]},
+  {key:"outubro", label:"Outubro", aliases:["outubro","out"]},
+  {key:"novembro", label:"Novembro", aliases:["novembro","nov"]},
+  {key:"dezembro", label:"Dezembro", aliases:["dezembro","dez"]},
+];
+
+function normalizeText(s){
+  return (s ?? "")
+    .toString()
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function parseBRNumber(v){
+  if (v === null || v === undefined) return 0;
+  if (typeof v === "number") return isFinite(v) ? v : 0;
+  let s = v.toString().trim();
+  if (!s) return 0;
+  s = s.replace(/[R$\s]/g, "");
+  if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
+  s = s.replace(/%/g, "");
+  const n = Number(s);
+  return isFinite(n) ? n : 0;
+}
+function moneyBR(n){
+  return (n || 0).toLocaleString("pt-BR", {style:"currency", currency:"BRL"});
+}
+function pctBR(n){
+  return (n || 0).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2}) + "%";
+}
+
+/* ==============================
+   CSV robusto (detecta ; , \t + aspas)
+================================*/
+function detectDelimiter(sampleLine){
+  const counts = {
+    ";": (sampleLine.match(/;/g) || []).length,
+    ",": (sampleLine.match(/,/g) || []).length,
+    "\t": (sampleLine.match(/\t/g) || []).length
+  };
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0] || ";";
+}
+
+function parseCSV(text){
+  text = text.replace(/^\uFEFF/, ""); // remove BOM
+  text = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+
+  const firstLine = (text.split("\n").find(l => l.trim().length>0) || "");
+  const sep = detectDelimiter(firstLine);
+
+  const rows = [];
+  let row = [];
+  let cur = "";
+  let inQuotes = false;
+
+  for (let i=0; i<text.length; i++){
+    const ch = text[i];
+
+    if (ch === '"'){
+      if (inQuotes && text[i+1] === '"'){ cur += '"'; i++; }
+      else inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (!inQuotes && ch === sep){
+      row.push(cur); cur = ""; continue;
+    }
+
+    if (!inQuotes && ch === "\n"){
+      row.push(cur); cur = "";
+      if (row.some(c => (c||"").trim() !== "")) rows.push(row);
+      row = [];
+      continue;
+    }
+
+    cur += ch;
+  }
+
+  row.push(cur);
+  if (row.some(c => (c||"").trim() !== "")) rows.push(row);
+
+  return {rows, sep};
+}
+
+function toObjects(rows){
+  if (!rows.length) return {header:[], objs:[]};
+  const header = rows[0].map(h => (h ?? "").toString().trim());
+  const objs = [];
+  for (let i=1;i<rows.length;i++){
+    const r = rows[i];
+    const o = {};
+    for (let c=0;c<header.length;c++){
+      const k = header[c] || `col${c+1}`;
+      o[k] = r[c] ?? "";
+    }
+    objs.push(o);
+  }
+  return {header, objs};
+}
+
+/* ==============================
+   Detecção de colunas
+================================*/
+function pickColumnKey(keys, targets){
+  const cand = keys.map(k => ({k, nk: normalizeText(k)}));
+  const wanted = (Array.isArray(targets) ? targets : [targets]).map(t => normalizeText(t));
+
+  // match exato
+  for (const t of wanted){
+    const direct = cand.find(c => c.nk === t);
+    if (direct) return direct.k;
+  }
+
+  // contém
+  for (const t of wanted){
+    const contains = cand.find(c => c.nk.includes(t));
+    if (contains) return contains.k;
+  }
+
+  // palavras
+  for (const t of wanted){
+    const words = t.split(/\s+/).filter(Boolean);
+    const allWords = cand.find(c => words.every(w => c.nk.includes(w)));
+    if (allWords) return allWords.k;
+  }
+
+  return null;
+}
+
+function normalizeDataset(raw){
+  if (!raw || raw.length === 0) return [];
+
+  const keys = Object.keys(raw[0] || {});
+
+  const colFicha = pickColumnKey(keys, ["ficha"]);
+  const colNatureza = pickColumnKey(keys, ["natureza", "natureza da receita", "natureza da rec", "natureza da rec."]);
+  const colNome = pickColumnKey(keys, ["nome", "nome da ficha", "nome da receita"]);
+  const colOrcado = pickColumnKey(keys, ["orcado", "orçado", "orcamento", "orçamento"]);
+
+  if (!colFicha || !colNatureza || !colNome || !colOrcado){
+    throw new Error(
+      "Cabeçalho não reconhecido.\n\n" +
+      "Colunas detectadas:\n- " + keys.join("\n- ") + "\n\n" +
+      "Precisa ter pelo menos:\n" +
+      "- ficha\n- natureza\n- nome\n- orçado\n- janeiro..dezembro\n\n" +
+      "Dica: no Excel, mantenha esses títulos na primeira linha."
+    );
+  }
+
+  const monthCols = {};
+  for (const m of MONTHS){
+    const found = keys.find(k => m.aliases.includes(normalizeText(k)));
+    if (found) monthCols[m.key] = found;
+  }
+
+  if (!monthCols.janeiro){
+    throw new Error(
+      "Não encontrei a coluna 'janeiro' no cabeçalho.\n\n" +
+      "Colunas detectadas:\n- " + keys.join("\n- ")
+    );
+  }
+
+  const out = [];
+  for (const r of raw){
+    const ficha = (r[colFicha] ?? "").toString().trim();
+    const natureza = (r[colNatureza] ?? "").toString().trim();
+    const nome = (r[colNome] ?? "").toString().trim();
+    const orcado = parseBRNumber(r[colOrcado]);
+
+    const values = {};
+    for (const m of MONTHS){
+      const ck = monthCols[m.key];
+      values[m.key] = ck ? parseBRNumber(r[ck]) : 0;
+    }
+
+    const isEmpty =
+      !ficha && !natureza && !nome &&
+      orcado === 0 &&
+      Object.values(values).every(v => v === 0);
+
+    if (isEmpty) continue;
+
+    out.push({
+      ficha, natureza, nome, orcado, values,
+      _search: normalizeText([ficha, natureza, nome].join(" ")),
+    });
+  }
+  return out;
+}
+
+/* ==============================
+   Estado + elementos
+================================*/
+let DATA = [];
+let META = { fonte:"—", atualizado:"—" };
+
+const els = {
+  municipio: document.getElementById("municipio"),
+  ano: document.getElementById("ano"),
+  fileInput: document.getElementById("fileInput"),
+  btnProcessar: document.getElementById("btnProcessar"),
+  btnLimpar: document.getElementById("btnLimpar"),
+  mesFoco: document.getElementById("mesFoco"),
+  dimensao: document.getElementById("dimensao"),
+  tipoSerie: document.getElementById("tipoSerie"),
+  quickSearch: document.getElementById("quickSearch"),
+  pillStatus: document.getElementById("pillStatus"),
+  titulo: document.getElementById("titulo"),
+  subtitulo: document.getElementById("subtitulo"),
+  statusArquivo: document.getElementById("statusArquivo"),
+  statusAtualizacao: document.getElementById("statusAtualizacao"),
+  errorBox: document.getElementById("errorBox"),
+  miniPeriodo: document.getElementById("miniPeriodo"),
+  miniDim: document.getElementById("miniDim"),
+  kpiOrcado: document.getElementById("kpiOrcado"),
+  kpiOrcadoObs: document.getElementById("kpiOrcadoObs"),
+  kpiArrecAno: document.getElementById("kpiArrecAno"),
+  kpiArrecAnoObs: document.getElementById("kpiArrecAnoObs"),
+  kpiExec: document.getElementById("kpiExec"),
+  kpiExecObs: document.getElementById("kpiExecObs"),
+  kpiMes: document.getElementById("kpiMes"),
+  kpiMesObs: document.getElementById("kpiMesObs"),
+  kpiVar: document.getElementById("kpiVar"),
+  kpiVarObs: document.getElementById("kpiVarObs"),
+  thMesFoco: document.getElementById("thMesFoco"),
+  tbody: document.getElementById("tbody"),
+  miniLinhas: document.getElementById("miniLinhas"),
+  tableSearch: document.getElementById("tableSearch"),
+  btnExportCSV: document.getElementById("btnExportCSV"),
+  bTipo: document.getElementById("bTipo"),
+  bMetrica: document.getElementById("bMetrica"),
+  bEixo: document.getElementById("bEixo"),
+  bAgrupar: document.getElementById("bAgrupar"),
+};
+
+function showError(msg){
+  els.errorBox.style.display = msg ? "block" : "none";
+  els.errorBox.textContent = msg || "";
+}
+function clearError(){ showError(""); }
+
+(function init(){
+  for (const m of MONTHS){
+    const opt = document.createElement("option");
+    opt.value = m.key;
+    opt.textContent = m.label;
+    els.mesFoco.appendChild(opt);
+  }
+  els.mesFoco.value = "janeiro";
+
+  const saved = localStorage.getItem("receitas_dashboard_offline_v2");
+  if (saved){
+    try{
+      const obj = JSON.parse(saved);
+      DATA = obj.data || [];
+      META = obj.meta || META;
+      els.municipio.value = obj.municipio || "";
+      els.ano.value = obj.ano || "";
+      els.mesFoco.value = obj.mesFoco || "janeiro";
+      els.dimensao.value = obj.dimensao || "natureza";
+      els.tipoSerie.value = obj.tipoSerie || "line";
+      els.bTipo.value = obj.bTipo || "bar";
+      els.bMetrica.value = obj.bMetrica || "mes";
+      els.bEixo.value = obj.bEixo || "dim";
+      els.bAgrupar.value = obj.bAgrupar || "none";
+    }catch(e){}
+  }
+
+  mountCanvas("chartSerie");
+  mountCanvas("chartTop");
+  mountCanvas("chartBuilder");
+
+  updateUI();
+  window.addEventListener("resize", ()=>updateUI());
+})();
+
+function saveState(){
+  const obj = {
+    data: DATA,
+    meta: META,
+    municipio: els.municipio.value,
+    ano: els.ano.value,
+    mesFoco: els.mesFoco.value,
+    dimensao: els.dimensao.value,
+    tipoSerie: els.tipoSerie.value,
+    bTipo: els.bTipo.value,
+    bMetrica: els.bMetrica.value,
+    bEixo: els.bEixo.value,
+    bAgrupar: els.bAgrupar.value,
+  };
+  localStorage.setItem("receitas_dashboard_offline_v2", JSON.stringify(obj));
+}
+
+/* ==============================
+   Cálculos
+================================*/
+function sumMonth(row, mesKey){ return row.values?.[mesKey] || 0; }
+function sumAcum(row, mesKey){
+  const idx = MONTHS.findIndex(m => m.key === mesKey);
+  if (idx < 0) return 0;
+  let s = 0;
+  for (let i=0;i<=idx;i++) s += row.values[MONTHS[i].key] || 0;
+  return s;
+}
+function totalByMonth(rows){
+  const totals = {};
+  for (const m of MONTHS) totals[m.key] = 0;
+  for (const r of rows){
+    for (const m of MONTHS) totals[m.key] += (r.values[m.key] || 0);
+  }
+  return totals;
+}
+function groupSum(rows, dimKey, mesKey, mode){
+  const map = new Map();
+  for (const r of rows){
+    const dimVal = (r[dimKey] || "—").toString().trim() || "—";
+    let val = 0;
+    if (mode === "mes") val = sumMonth(r, mesKey);
+    else if (mode === "acum") val = sumAcum(r, mesKey);
+    else if (mode === "orc") val = r.orcado || 0;
+    else if (mode === "exec"){
+      const acum = sumAcum(r, mesKey);
+      const orc = r.orcado || 0;
+      val = (orc > 0) ? (acum / orc) * 100 : 0;
+    }
+    map.set(dimVal, (map.get(dimVal) || 0) + val);
+  }
+  return Array.from(map.entries()).map(([k,v]) => ({k,v}));
+}
+
+function applyFilters(){
+  const mesKey = els.mesFoco.value;
+  const quick = normalizeText(els.quickSearch.value || "");
+  const tableQ = normalizeText(els.tableSearch.value || "");
+  const q = quick || tableQ;
+
+  let rows = DATA.slice();
+  if (q) rows = rows.filter(r => r._search.includes(q));
+  return { rows, mesKey };
+}
+
+/* ==============================
+   Charts (Canvas)
+================================*/
+function mountCanvas(containerId){
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+  const c = document.createElement("canvas");
+  c.className = "chartCanvas";
+  c.dataset.role = "chart";
+  el.appendChild(c);
+}
+function getCanvas(containerId){
+  const el = document.getElementById(containerId);
+  return el.querySelector("canvas[data-role='chart']");
+}
+function fitCanvas(canvas){
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.max(300, Math.floor(rect.width));
+  const h = Math.max(220, Math.floor(rect.height));
+  canvas.width = Math.floor(w * dpr);
+  canvas.height = Math.floor(h * dpr);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return {ctx, w, h};
+}
+function clearChart(ctx, w, h){
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = "rgba(0,0,0,.08)";
+  ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle = "rgba(255,255,255,.08)";
+  ctx.strokeRect(0.5,0.5,w-1,h-1);
+}
+function drawGrid(ctx, plot, yTicks=4){
+  const {x,y,w,h} = plot;
+  ctx.strokeStyle = "rgba(255,255,255,.06)";
+  ctx.lineWidth = 1;
+  for(let i=0;i<=yTicks;i++){
+    const yy = y + (h*i)/yTicks;
+    ctx.beginPath();
+    ctx.moveTo(x, yy);
+    ctx.lineTo(x+w, yy);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = "rgba(255,255,255,.12)";
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x, y+h);
+  ctx.lineTo(x+w, y+h);
+  ctx.stroke();
+}
+function formatCompact(n){
+  const abs = Math.abs(n);
+  if (abs >= 1e9) return (n/1e9).toFixed(1).replace(".",",")+" bi";
+  if (abs >= 1e6) return (n/1e6).toFixed(1).replace(".",",")+" mi";
+  if (abs >= 1e3) return (n/1e3).toFixed(1).replace(".",",")+" mil";
+  return n.toFixed(0).replace(".",",");
+}
+function drawYAxisLabels(ctx, plot, maxY, yTicks=4){
+  const {x,y,h} = plot;
+  ctx.fillStyle = "rgba(233,238,252,.75)";
+  ctx.font = "12px system-ui, Arial";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  for(let i=0;i<=yTicks;i++){
+    const val = maxY*(1 - i/yTicks);
+    const yy = y + (h*i)/yTicks;
+    ctx.fillText(formatCompact(val), x-8, yy);
+  }
+}
+function drawXAxisLabels(ctx, plot, labels){
+  const {x,y,w,h} = plot;
+  ctx.fillStyle = "rgba(233,238,252,.75)";
+  ctx.font = "12px system-ui, Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  const n = labels.length;
+  const step = w / Math.max(1,n-1);
+  for(let i=0;i<n;i++){
+    const xx = x + step*i;
+    if (n > 12 && i % 2 === 1) continue;
+    ctx.save();
+    ctx.translate(xx, y+h+8);
+    ctx.rotate(-Math.PI/6);
+    ctx.fillText(labels[i], 0, 0);
+    ctx.restore();
+  }
+}
+function drawLineSeries(ctx, plot, values, maxY){
+  const {x,y,w,h} = plot;
+  const n = values.length;
+  const step = w / Math.max(1,n-1);
+
+  ctx.strokeStyle = "rgba(110,231,255,.90)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for(let i=0;i<n;i++){
+    const v = values[i] || 0;
+    const xx = x + step*i;
+    const yy = y + h - (maxY ? (v/maxY)*h : 0);
+    if (i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
+  }
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(110,231,255,.95)";
+  for(let i=0;i<n;i++){
+    const v = values[i] || 0;
+    const xx = x + step*i;
+    const yy = y + h - (maxY ? (v/maxY)*h : 0);
+    ctx.beginPath();
+    ctx.arc(xx,yy,3,0,Math.PI*2);
+    ctx.fill();
+  }
+}
+function drawBarSeries(ctx, plot, values, maxY){
+  const {x,y,w,h} = plot;
+  const n = values.length;
+  const gap = 8;
+  const bw = Math.max(6, (w / n) - gap);
+  ctx.fillStyle = "rgba(139,92,246,.75)";
+  for(let i=0;i<n;i++){
+    const v = values[i] || 0;
+    const barH = maxY ? (v/maxY)*h : 0;
+    const xx = x + i*(w/n) + gap/2;
+    const yy = y + h - barH;
+    ctx.fillRect(xx, yy, bw, barH);
+  }
+}
+function drawHBar(ctx, plot, labels, values){
+  const {x,y,w,h} = plot;
+  const n = labels.length;
+  const max = Math.max(...values, 1);
+  const rowH = h / n;
+  ctx.font = "12px system-ui, Arial";
+  ctx.textBaseline = "middle";
+
+  for(let i=0;i<n;i++){
+    const v = values[i] || 0;
+    const barW = (v/max) * (w*0.62);
+    const yy = y + i*rowH + rowH/2;
+
+    ctx.fillStyle = "rgba(233,238,252,.80)";
+    ctx.textAlign = "left";
+    const name = (labels[i] || "").toString();
+    const trimmed = name.length > 20 ? name.slice(0,20)+"…" : name;
+    ctx.fillText(trimmed, x, yy);
+
+    const bx = x + w*0.34;
+    ctx.fillStyle = "rgba(110,231,255,.60)";
+    ctx.fillRect(bx, yy-6, barW, 12);
+
+    ctx.fillStyle = "rgba(233,238,252,.70)";
+    ctx.textAlign = "right";
+    ctx.fillText(formatCompact(v), x+w, yy);
+  }
+}
+
+function renderSerie(rows){
+  const canvas = getCanvas("chartSerie");
+  const {ctx,w,h} = fitCanvas(canvas);
+  clearChart(ctx,w,h);
+
+  const totals = totalByMonth(rows);
+  const labels = MONTHS.map(m=>m.label);
+  const values = MONTHS.map(m=>totals[m.key] || 0);
+  const maxY = Math.max(...values, 1);
+
+  const plot = {x:60, y:16, w:w-80, h:h-70};
+  drawGrid(ctx, plot, 4);
+  drawYAxisLabels(ctx, plot, maxY, 4);
+  drawXAxisLabels(ctx, plot, labels);
+
+  if (els.tipoSerie.value === "bar") drawBarSeries(ctx, plot, values, maxY);
+  else drawLineSeries(ctx, plot, values, maxY);
+}
+
+function renderTop(rows, mesKey){
+  const canvas = getCanvas("chartTop");
+  const {ctx,w,h} = fitCanvas(canvas);
+  clearChart(ctx,w,h);
+
+  const dim = els.dimensao.value;
+  els.miniDim.textContent = dim === "natureza" ? "Natureza" : dim === "ficha" ? "Ficha" : "Nome";
+
+  const grouped = groupSum(rows, dim, mesKey, "acum")
+    .sort((a,b)=>b.v-a.v)
+    .slice(0,10);
+
+  const labels = grouped.map(d=>d.k);
+  const values = grouped.map(d=>d.v);
+
+  const plot = {x:14, y:16, w:w-28, h:h-34};
+  drawHBar(ctx, plot, labels, values);
+}
+
+function renderBuilder(rows, mesKey){
+  const canvas = getCanvas("chartBuilder");
+  const {ctx,w,h} = fitCanvas(canvas);
+  clearChart(ctx,w,h);
+
+  const tipo = els.bTipo.value;
+  const metrica = els.bMetrica.value;
+  const eixo = els.bEixo.value;
+  const agrupar = els.bAgrupar.value;
+  const dim = els.dimensao.value;
+
+  const plot = {x:60, y:16, w:w-80, h:h-70};
+
+  let labels = [];
+  let series = [];
+
+  if (eixo === "meses"){
+    labels = MONTHS.map(m=>m.label);
+
+    const gKey = agrupar === "none" ? null : agrupar;
+    if (!gKey){
+      const values = MONTHS.map(m => rows.reduce((a,r)=>a+(r.values[m.key]||0),0));
+      series = [{name:"Total", values}];
+    } else {
+      const groups = new Map();
+      for (const r of rows){
+        const k = (r[gKey]||"—").toString().trim()||"—";
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(r);
+      }
+      const ranked = Array.from(groups.entries())
+        .map(([k,rs]) => ({k, v: rs.reduce((a,r)=>a+sumAcum(r, mesKey),0)}))
+        .sort((a,b)=>b.v-a.v)
+        .slice(0,6);
+
+      for (const it of ranked){
+        const rs = groups.get(it.k);
+        const values = MONTHS.map(m => rs.reduce((a,r)=>a+(r.values[m.key]||0),0));
+        series.push({name: it.k, values});
+      }
+    }
+  } else {
+    const mode = metrica === "mes" ? "mes" : metrica === "acum" ? "acum" : metrica === "orc" ? "orc" : "exec";
+    const grouped = groupSum(rows, dim, mesKey, mode).sort((a,b)=>b.v-a.v).slice(0,12);
+    labels = grouped.map(d=>d.k);
+
+    if (agrupar === "none"){
+      series = [{name:"Total", values: grouped.map(d=>d.v)}];
+    } else {
+      const gKey = agrupar;
+      const groups = new Map();
+      for (const r of rows){
+        const k = (r[gKey]||"—").toString().trim()||"—";
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(r);
+      }
+      const ranked = Array.from(groups.entries())
+        .map(([k,rs]) => ({k, v: rs.reduce((a,r)=>a+sumAcum(r, mesKey),0)}))
+        .sort((a,b)=>b.v-a.v)
+        .slice(0,6);
+
+      for (const it of ranked){
+        const rs = groups.get(it.k);
+        const values = labels.map(labelX => {
+          const only = rs.filter(r => ((r[dim]||"—").toString().trim()||"—") === labelX);
+          if (metrica === "mes") return only.reduce((a,r)=>a+sumMonth(r, mesKey),0);
+          if (metrica === "acum") return only.reduce((a,r)=>a+sumAcum(r, mesKey),0);
+          if (metrica === "orc") return only.reduce((a,r)=>a+(r.orcado||0),0);
+          const acum = only.reduce((a,r)=>a+sumAcum(r, mesKey),0);
+          const orc = only.reduce((a,r)=>a+(r.orcado||0),0);
+          return orc>0 ? (acum/orc)*100 : 0;
+        });
+        series.push({name: it.k, values});
+      }
+    }
+  }
+
+  const allValues = series.flatMap(s => s.values);
+  const maxY = Math.max(...allValues, 1);
+
+  drawGrid(ctx, plot, 4);
+  drawYAxisLabels(ctx, plot, maxY, 4);
+  drawXAxisLabels(ctx, plot, labels);
+
+  if (tipo === "line"){
+    drawLineSeries(ctx, plot, series[0]?.values || [], maxY);
+  } else if (tipo === "bar"){
+    drawBarSeries(ctx, plot, series[0]?.values || [], maxY);
+  } else {
+    const n = labels.length || 1;
+    const gap = 8;
+    const bw = Math.max(6, (plot.w / n) - gap);
+    const palette = [
+      "rgba(110,231,255,.55)",
+      "rgba(139,92,246,.50)",
+      "rgba(34,197,94,.42)",
+      "rgba(251,191,36,.40)",
+      "rgba(239,68,68,.35)",
+      "rgba(255,255,255,.22)"
+    ];
+    for (let i=0;i<n;i++){
+      let stack = 0;
+      for (let s=0;s<Math.min(series.length,6);s++){
+        const v = (series[s].values[i] || 0);
+        const barH = (v/maxY)*plot.h;
+        const xx = plot.x + i*(plot.w/n) + gap/2;
+        const yy = plot.y + plot.h - ((stack/maxY)*plot.h) - barH;
+        ctx.fillStyle = palette[s % palette.length];
+        ctx.fillRect(xx, yy, bw, barH);
+        stack += v;
+      }
+    }
+  }
+}
+
+function escapeHtml(s){
+  return (s ?? "").toString()
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+function renderTable(rows, mesKey){
+  const idx = MONTHS.findIndex(m=>m.key===mesKey);
+  const sorted = rows.slice().sort((a,b)=> (sumMonth(b, mesKey) - sumMonth(a, mesKey)));
+
+  const q = normalizeText(els.tableSearch.value || "");
+  const filtered = q ? sorted.filter(r => r._search.includes(q)) : sorted;
+
+  els.miniLinhas.textContent = `${filtered.length} linhas`;
+  els.tbody.innerHTML = "";
+
+  const frag = document.createDocumentFragment();
+  for (const r of filtered.slice(0, 900)){
+    const tr = document.createElement("tr");
+    const acum = sumAcum(r, mesKey);
+    tr.innerHTML = `
+      <td>${escapeHtml(r.ficha)}</td>
+      <td>${escapeHtml(r.natureza)}</td>
+      <td title="${escapeHtml(r.nome)}">${escapeHtml(r.nome)}</td>
+      <td>${moneyBR(r.orcado)}</td>
+      <td>${moneyBR(sumMonth(r, mesKey))}</td>
+      <td>${moneyBR(acum)}</td>
+    `;
+    frag.appendChild(tr);
+  }
+  els.tbody.appendChild(frag);
+  els.thMesFoco.textContent = MONTHS[idx]?.label || "Mês";
+}
+
+function updateHeader(){
+  const muni = els.municipio.value.trim();
+  const ano = els.ano.value.trim();
+  els.titulo.textContent = muni ? `Dashboard de Receitas — ${muni}` : "Dashboard de Receitas";
+  els.subtitulo.textContent = ano ? `Visão gerencial (${ano}) com filtros e análises dinâmicas.` : "Visão gerencial com filtros e análises dinâmicas.";
+  els.statusArquivo.textContent = `Fonte: ${META.fonte || "—"}`;
+  els.statusAtualizacao.textContent = `Atualização: ${META.atualizado || "—"}`;
+}
+
+function updateKPIs(rows, mesKey){
+  const totalOrcado = rows.reduce((a,r)=>a+(r.orcado||0),0);
+  const totals = totalByMonth(rows);
+
+  const idx = MONTHS.findIndex(m => m.key === mesKey);
+  const mesAtual = totals[mesKey] || 0;
+
+  let acum = 0;
+  for (let i=0;i<=idx;i++) acum += totals[MONTHS[i].key] || 0;
+
+  const exec = totalOrcado > 0 ? (acum/totalOrcado)*100 : 0;
+
+  const prevKey = idx > 0 ? MONTHS[idx-1].key : null;
+  const prevVal = prevKey ? (totals[prevKey]||0) : 0;
+
+  let varPct = null;
+  if (prevKey){
+    varPct = prevVal !== 0 ? ((mesAtual - prevVal)/prevVal)*100 : (mesAtual !== 0 ? 100 : 0);
+  }
+
+  els.kpiOrcado.textContent = moneyBR(totalOrcado);
+  els.kpiOrcadoObs.textContent = "Base: soma do Orçado (filtros aplicados)";
+
+  els.kpiArrecAno.textContent = moneyBR(acum);
+  els.kpiArrecAnoObs.textContent = `Acumulado até ${MONTHS[idx]?.label || ""}`;
+
+  els.kpiExec.textContent = pctBR(exec);
+  els.kpiExecObs.textContent = (exec >= 90 ? "Execução alta" : exec >= 60 ? "Execução moderada" : "Execução baixa");
+
+  els.kpiMes.textContent = moneyBR(mesAtual);
+  els.kpiMesObs.textContent = `Total em ${MONTHS[idx]?.label || ""}`;
+
+  if (varPct === null){
+    els.kpiVar.textContent = "—";
+    els.kpiVarObs.textContent = "Sem mês anterior";
+  } else {
+    const arrow = varPct >= 0 ? "▲" : "▼";
+    const color = varPct >= 0 ? "var(--good)" : "var(--bad)";
+    els.kpiVar.innerHTML = `<span style="color:${color}; font-weight:800;">${arrow} ${pctBR(Math.abs(varPct))}</span>`;
+    els.kpiVarObs.textContent = `Comparado a ${MONTHS[idx-1]?.label || ""}`;
+  }
+
+  els.miniPeriodo.textContent = `até ${MONTHS[idx]?.label || "—"}`;
+}
+
+function updateUI(){
+  clearError();
+  updateHeader();
+
+  const { rows, mesKey } = applyFilters();
+  els.pillStatus.textContent = DATA.length ? `Base carregada • ${DATA.length} linhas` : "Nenhum arquivo carregado";
+
+  updateKPIs(rows, mesKey);
+  renderSerie(rows);
+  renderTop(rows, mesKey);
+  renderBuilder(rows, mesKey);
+  renderTable(rows, mesKey);
+
+  saveState();
+}
+
+/* ==============================
+   Eventos
+================================*/
+els.btnProcessar.addEventListener("click", async ()=>{
+  const file = els.fileInput.files?.[0];
+  if (!file){
+    showError("Selecione um arquivo CSV antes de carregar.");
+    return;
+  }
+
+  try{
+    els.pillStatus.textContent = "Processando CSV...";
+
+    const buf = await file.arrayBuffer();
+
+    // tenta utf-8 e fallback latin1
+    let text = new TextDecoder("utf-8").decode(buf);
+    if ((text.match(/�/g) || []).length > 5){
+      text = new TextDecoder("iso-8859-1").decode(buf);
+    }
+
+    const parsed = parseCSV(text);
+    const {header, objs} = toObjects(parsed.rows);
+
+    if (!objs.length){
+      throw new Error("CSV sem dados (apenas cabeçalho ou arquivo vazio).");
+    }
+
+    DATA = normalizeDataset(objs);
+
+    META.fonte = `${file.name} • CSV (${parsed.sep === ";" ? "separador ;" : "separador ,"} )`;
+    META.atualizado = new Date().toLocaleString("pt-BR");
+
+    updateUI();
+  }catch(err){
+    console.error(err);
+    showError("Erro ao processar:\n\n" + (err?.message || err));
+    els.pillStatus.textContent = "Erro ao processar";
+  }
+});
+
+els.btnLimpar.addEventListener("click", ()=>{
+  if (!confirm("Tem certeza que deseja limpar os dados salvos?")) return;
+  DATA = [];
+  META = { fonte:"—", atualizado:"—" };
+  localStorage.removeItem("receitas_dashboard_offline_v2");
+  els.fileInput.value = "";
+  updateUI();
+});
+
+[
+  els.municipio, els.ano, els.mesFoco, els.dimensao, els.tipoSerie,
+  els.quickSearch, els.tableSearch, els.bTipo, els.bMetrica, els.bEixo, els.bAgrupar
+].forEach(el => el.addEventListener("input", updateUI));
+
+els.quickSearch.addEventListener("input", ()=>{
+  els.tableSearch.value = els.quickSearch.value;
+  updateUI();
+});
+
+els.btnExportCSV.addEventListener("click", ()=>{
+  if (!DATA.length){
+    showError("Carregue um arquivo antes.");
+    return;
+  }
+  clearError();
+  const { rows, mesKey } = applyFilters();
+  const idx = MONTHS.findIndex(m=>m.key===mesKey);
+  const mesLabel = MONTHS[idx]?.label || "Mes";
+
+  const header = ["Ficha","Natureza","Nome","Orcado", mesLabel, "Acumulado"];
+  const lines = [header.join(";")];
+
+  const q = normalizeText(els.tableSearch.value || "");
+  const tableRows = q ? rows.filter(r => r._search.includes(q)) : rows;
+
+  for (const r of tableRows){
+    const acum = sumAcum(r, mesKey);
+    const line = [
+      (r.ficha||"").replaceAll(";"," "),
+      (r.natureza||"").replaceAll(";"," "),
+      (r.nome||"").replaceAll(";"," "),
+      (r.orcado||0).toString().replace(".",","),
+      (sumMonth(r, mesKey)||0).toString().replace(".",","),
+      (acum||0).toString().replace(".",","),
+    ].join(";");
+    lines.push(line);
+  }
+
+  const blob = new Blob([lines.join("\n")], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "visao_receitas_export.csv";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+});
+</script>
+
+<!-- PWA: registro do Service Worker (necessário para instalar como App) -->
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js").catch(console.warn);
+    });
+  }
+</script>
+
+</body>
+</html>
