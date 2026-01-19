@@ -220,6 +220,7 @@
     .panelBody{ padding:10px 10px 8px; }
 
     #chartSerie{ position:relative; }
+    #chartTop{ position:relative; }
     .chartTooltip{
       position:absolute;
       left:0;
@@ -814,6 +815,10 @@ const chartSerieState = {
   values: [],
 };
 let chartSerieTooltip = null;
+const chartTopState = {
+  rows: [],
+};
+let chartTopTooltip = null;
 
 function showError(msg){
   els.errorBox.style.display = msg ? "block" : "none";
@@ -852,6 +857,7 @@ function clearError(){ showError(""); }
   mountCanvas("chartTop");
   mountCanvas("chartBuilder");
   setupChartSerieTooltip();
+  setupChartTopTooltip();
 
   updateUI();
   window.addEventListener("resize", ()=>updateUI());
@@ -1103,6 +1109,41 @@ function setupChartSerieTooltip(){
 
   container.addEventListener("mouseleave", hideTooltip);
 }
+function setupChartTopTooltip(){
+  const container = document.getElementById("chartTop");
+  if (!container || chartTopTooltip) return;
+
+  chartTopTooltip = document.createElement("div");
+  chartTopTooltip.className = "chartTooltip";
+  container.appendChild(chartTopTooltip);
+
+  const hideTooltip = () => {
+    chartTopTooltip.classList.remove("visible");
+  };
+
+  container.addEventListener("mousemove", (event) => {
+    if (!chartTopState.rows.length) return hideTooltip();
+    const canvas = getCanvas("chartTop");
+    if (!canvas) return hideTooltip();
+    const rect = canvas.getBoundingClientRect();
+    const mx = event.clientX - rect.left;
+    const my = event.clientY - rect.top;
+    const hit = chartTopState.rows.find(row => (
+      row.isTrimmed &&
+      mx >= row.x &&
+      mx <= row.x + row.w &&
+      my >= row.y &&
+      my <= row.y + row.h
+    ));
+    if (!hit) return hideTooltip();
+    chartTopTooltip.textContent = hit.label;
+    chartTopTooltip.style.left = `${mx}px`;
+    chartTopTooltip.style.top = `${hit.y + hit.h / 2}px`;
+    chartTopTooltip.classList.add("visible");
+  });
+
+  container.addEventListener("mouseleave", hideTooltip);
+}
 function drawHBar(ctx, plot, labels, values){
   const {x,y,w,h} = plot;
   const n = labels.length;
@@ -1110,6 +1151,7 @@ function drawHBar(ctx, plot, labels, values){
   const rowH = h / n;
   ctx.font = "12px system-ui, Arial";
   ctx.textBaseline = "middle";
+  const rows = [];
 
   for(let i=0;i<n;i++){
     const v = values[i] || 0;
@@ -1119,8 +1161,18 @@ function drawHBar(ctx, plot, labels, values){
     ctx.fillStyle = "rgba(233,238,252,.80)";
     ctx.textAlign = "left";
     const name = (labels[i] || "").toString();
-    const trimmed = name.length > 20 ? name.slice(0,20)+"…" : name;
+    const isTrimmed = name.length > 20;
+    const trimmed = isTrimmed ? name.slice(0,20)+"…" : name;
     ctx.fillText(trimmed, x, yy);
+    const textW = ctx.measureText(trimmed).width;
+    rows.push({
+      label: name,
+      isTrimmed,
+      x,
+      y: yy - rowH / 2,
+      w: textW,
+      h: rowH,
+    });
 
     const bx = x + w*0.34;
     ctx.fillStyle = "rgba(110,231,255,.60)";
@@ -1130,6 +1182,7 @@ function drawHBar(ctx, plot, labels, values){
     ctx.textAlign = "right";
     ctx.fillText(formatCompact(v), x+w, yy);
   }
+  return rows;
 }
 
 function renderSerie(rows){
@@ -1171,7 +1224,7 @@ function renderTop(rows, mesKey){
   const values = grouped.map(d=>d.v);
 
   const plot = {x:14, y:16, w:w-28, h:h-34};
-  drawHBar(ctx, plot, labels, values);
+  chartTopState.rows = drawHBar(ctx, plot, labels, values);
 }
 
 function renderBuilder(rows, mesKey){
