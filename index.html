@@ -983,12 +983,15 @@ function applyFilters(){
   const q = quick || tableQ;
   const selected = SELECTED_FICHAS;
 
-  let rows = DATA.slice();
+  let chartRows = DATA.slice();
   if (selected.size){
-    rows = rows.filter(r => selected.has(r.ficha));
+    chartRows = chartRows.filter(r => selected.has(r.ficha));
   }
-  if (q) rows = rows.filter(r => r._search.includes(q));
-  return { rows, mesKey };
+
+  let tableRows = DATA.slice();
+  if (q) tableRows = tableRows.filter(r => r._search.includes(q));
+
+  return { chartRows, tableRows, mesKey };
 }
 
 function toggleFichaSelection(ficha){
@@ -1587,16 +1590,16 @@ function updateUI(){
   clearError();
   updateHeader();
 
-  const { rows, mesKey } = applyFilters();
+  const { chartRows, tableRows, mesKey } = applyFilters();
   els.pillStatus.textContent = DATA.length ? `Base carregada • ${DATA.length} linhas` : "Nenhum arquivo carregado";
 
   renderFichaChips();
 
-  updateKPIs(rows, mesKey);
-  renderSerie(rows);
-  renderTop(rows, mesKey);
-  renderBuilder(rows, mesKey);
-  renderTable(rows, mesKey);
+  updateKPIs(chartRows, mesKey);
+  renderSerie(chartRows);
+  renderTop(chartRows, mesKey);
+  renderBuilder(chartRows, mesKey);
+  renderTable(tableRows, mesKey);
 
   saveState();
 }
@@ -1689,15 +1692,12 @@ els.btnExportCSV.addEventListener("click", ()=>{
     return;
   }
   clearError();
-  const { rows, mesKey } = applyFilters();
+  const { tableRows, mesKey } = applyFilters();
   const idx = MONTHS.findIndex(m=>m.key===mesKey);
   const mesLabel = MONTHS[idx]?.label || "Mes";
 
   const header = ["Ficha","Natureza","Nome","Orcado", mesLabel, "Acumulado"];
   const lines = [header.join(";")];
-
-  const q = normalizeText(els.tableSearch.value || "");
-  const tableRows = q ? rows.filter(r => r._search.includes(q)) : rows;
 
   for (const r of tableRows){
     const acum = sumAcum(r, mesKey);
