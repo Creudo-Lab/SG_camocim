@@ -665,6 +665,17 @@ function normalizeText(s){
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 }
+function isNaturePrefixQuery(q){
+  return /^[0-9.]+$/.test(q);
+}
+function matchesTableQuery(row, q){
+  if (!q) return true;
+  if (isNaturePrefixQuery(q)){
+    const natureza = normalizeText(row.natureza || "");
+    return natureza.startsWith(q);
+  }
+  return row._search.includes(q);
+}
 
 function parseBRNumber(v){
   if (v === null || v === undefined) return 0;
@@ -1047,7 +1058,7 @@ function applyFilters(){
   }
 
   let tableRows = DATA.slice();
-  if (q) tableRows = tableRows.filter(r => r._search.includes(q));
+  if (q) tableRows = tableRows.filter(r => matchesTableQuery(r, q));
 
   return { chartRows, tableRows, mesKey };
 }
@@ -1560,7 +1571,7 @@ function renderTable(rows, mesKey){
   }
 
   const q = normalizeText(els.tableSearch.value || "");
-  const filtered = q ? sorted.filter(r => r._search.includes(q)) : sorted;
+  const filtered = q ? sorted.filter(r => matchesTableQuery(r, q)) : sorted;
 
   els.miniLinhas.textContent = `${filtered.length} linhas`;
   els.tbody.innerHTML = "";
