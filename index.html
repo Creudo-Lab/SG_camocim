@@ -141,6 +141,26 @@
       font-weight:600;
     }
 
+    .sortable{
+      white-space:nowrap;
+    }
+    .sortBtn{
+      border:none;
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      border-radius: 999px;
+      padding:2px 8px;
+      font-size:11px;
+      cursor:pointer;
+      margin-left:6px;
+      border:1px solid rgba(255,255,255,.1);
+    }
+    .sortBtn.active{
+      background: rgba(110,231,255,.18);
+      border-color: rgba(110,231,255,.45);
+      color: #dff6ff;
+    }
+
     .hint{
       color:var(--muted);
       font-size:12px;
@@ -593,9 +613,15 @@
         <table>
           <thead>
             <tr>
-              <th>Ficha</th>
-              <th>Natureza</th>
-              <th>Nome</th>
+              <th class="sortable">Ficha
+                <button class="sortBtn" data-sort="ficha" aria-label="Ordenar por ficha">⇅</button>
+              </th>
+              <th class="sortable">Natureza
+                <button class="sortBtn" data-sort="natureza" aria-label="Ordenar por natureza">⇅</button>
+              </th>
+              <th class="sortable">Nome
+                <button class="sortBtn" data-sort="nome" aria-label="Ordenar por nome">⇅</button>
+              </th>
               <th>Orçado</th>
               <th id="thMesFoco">Mês</th>
               <th>Acumulado</th>
@@ -823,6 +849,7 @@ function normalizeDataset(raw){
 let DATA = [];
 let META = { fonte:"—", atualizado:"—" };
 let SELECTED_FICHAS = new Set();
+const SORT_STATE = { key: null, dir: "asc" };
 
 const els = {
   municipio: document.getElementById("municipio"),
@@ -875,12 +902,42 @@ const chartTopState = {
   rows: [],
 };
 let chartTopTooltip = null;
+const tableSortButtons = Array.from(document.querySelectorAll(".sortBtn"));
 
 function showError(msg){
   els.errorBox.style.display = msg ? "block" : "none";
   els.errorBox.textContent = msg || "";
 }
 function clearError(){ showError(""); }
+
+function updateSortButtons(){
+  for (const btn of tableSortButtons){
+    const key = btn.dataset.sort;
+    const isActive = SORT_STATE.key === key;
+    btn.classList.toggle("active", isActive);
+    if (!isActive){
+      btn.textContent = "⇅";
+      btn.setAttribute("aria-pressed", "false");
+      continue;
+    }
+    btn.setAttribute("aria-pressed", "true");
+    btn.textContent = SORT_STATE.dir === "asc" ? "↑" : "↓";
+  }
+}
+
+function toggleSort(key){
+  if (SORT_STATE.key !== key){
+    SORT_STATE.key = key;
+    SORT_STATE.dir = "asc";
+  } else if (SORT_STATE.dir === "asc"){
+    SORT_STATE.dir = "desc";
+  } else {
+    SORT_STATE.key = null;
+    SORT_STATE.dir = "asc";
+  }
+  updateSortButtons();
+  updateUI();
+}
 
 (function init(){
   for (const m of MONTHS){
@@ -917,6 +974,7 @@ function clearError(){ showError(""); }
   setupChartTopTooltip();
   setupChartTopSelection();
 
+  updateSortButtons();
   updateUI();
   window.addEventListener("resize", ()=>updateUI());
 })();
@@ -1488,7 +1546,18 @@ function renderBuilder(rows, mesKey){
 
 function renderTable(rows, mesKey){
   const idx = MONTHS.findIndex(m=>m.key===mesKey);
-  const sorted = rows.slice().sort((a,b)=> (sumMonth(b, mesKey) - sumMonth(a, mesKey)));
+  let sorted = rows.slice();
+  if (SORT_STATE.key){
+    const key = SORT_STATE.key;
+    const dir = SORT_STATE.dir === "asc" ? 1 : -1;
+    sorted.sort((a,b)=>{
+      const av = (a[key] ?? "").toString();
+      const bv = (b[key] ?? "").toString();
+      return av.localeCompare(bv, "pt-BR", {numeric:true, sensitivity:"base"}) * dir;
+    });
+  } else {
+    sorted = sorted.sort((a,b)=> (sumMonth(b, mesKey) - sumMonth(a, mesKey)));
+  }
 
   const q = normalizeText(els.tableSearch.value || "");
   const filtered = q ? sorted.filter(r => r._search.includes(q)) : sorted;
@@ -1659,6 +1728,10 @@ els.btnLimpar.addEventListener("click", ()=>{
   els.municipio, els.ano, els.mesFoco, els.dimensao, els.tipoSerie,
   els.quickSearch, els.tableSearch, els.bTipo, els.bMetrica, els.bEixo, els.bAgrupar
 ].forEach(el => el.addEventListener("input", updateUI));
+
+tableSortButtons.forEach(btn => {
+  btn.addEventListener("click", () => toggleSort(btn.dataset.sort));
+});
 
 els.quickSearch.addEventListener("input", ()=>{
   els.tableSearch.value = els.quickSearch.value;
