@@ -219,6 +219,27 @@
     .panelHeader .mini{ color:var(--muted); font-size:12px; }
     .panelBody{ padding:10px 10px 8px; }
 
+    #chartSerie{ position:relative; }
+    .chartTooltip{
+      position:absolute;
+      left:0;
+      top:0;
+      transform: translate(-50%, -120%);
+      padding:6px 10px;
+      border-radius: 10px;
+      background: rgba(12,20,43,.95);
+      border:1px solid rgba(255,255,255,.14);
+      color: var(--text);
+      font-size:12px;
+      font-weight:600;
+      white-space:nowrap;
+      box-shadow: 0 8px 20px rgba(0,0,0,.35);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .08s ease;
+    }
+    .chartTooltip.visible{ opacity:1; }
+
     .builder{
       display:grid;
       grid-template-columns: repeat(4, 1fr);
@@ -787,6 +808,13 @@ const els = {
   bAgrupar: document.getElementById("bAgrupar"),
 };
 
+const chartSerieState = {
+  points: [],
+  labels: [],
+  values: [],
+};
+let chartSerieTooltip = null;
+
 function showError(msg){
   els.errorBox.style.display = msg ? "block" : "none";
   els.errorBox.textContent = msg || "";
@@ -823,6 +851,7 @@ function clearError(){ showError(""); }
   mountCanvas("chartSerie");
   mountCanvas("chartTop");
   mountCanvas("chartBuilder");
+  setupChartSerieTooltip();
 
   updateUI();
   window.addEventListener("resize", ()=>updateUI());
@@ -1021,6 +1050,59 @@ function drawBarSeries(ctx, plot, values, maxY){
     ctx.fillRect(xx, yy, bw, barH);
   }
 }
+function buildLinePoints(plot, values, maxY){
+  const {x,y,w,h} = plot;
+  const n = values.length;
+  const step = w / Math.max(1,n-1);
+  const points = [];
+  for (let i=0;i<n;i++){
+    const v = values[i] || 0;
+    const xx = x + step*i;
+    const yy = y + h - (maxY ? (v/maxY)*h : 0);
+    points.push({x: xx, y: yy, value: v, label: chartSerieState.labels[i]});
+  }
+  return points;
+}
+function setupChartSerieTooltip(){
+  const container = document.getElementById("chartSerie");
+  if (!container || chartSerieTooltip) return;
+
+  chartSerieTooltip = document.createElement("div");
+  chartSerieTooltip.className = "chartTooltip";
+  container.appendChild(chartSerieTooltip);
+
+  const hideTooltip = () => {
+    chartSerieTooltip.classList.remove("visible");
+  };
+
+  container.addEventListener("mousemove", (event) => {
+    if (!chartSerieState.points.length) return hideTooltip();
+    const canvas = getCanvas("chartSerie");
+    if (!canvas) return hideTooltip();
+    const rect = canvas.getBoundingClientRect();
+    const mx = event.clientX - rect.left;
+    const my = event.clientY - rect.top;
+    const radius = 8;
+    let hit = null;
+    let best = Infinity;
+    for (const point of chartSerieState.points){
+      const dx = mx - point.x;
+      const dy = my - point.y;
+      const dist = dx*dx + dy*dy;
+      if (dist <= radius*radius && dist < best){
+        best = dist;
+        hit = point;
+      }
+    }
+    if (!hit) return hideTooltip();
+    chartSerieTooltip.textContent = `${hit.label} • Valor do mês: ${moneyBR(hit.value)}`;
+    chartSerieTooltip.style.left = `${hit.x}px`;
+    chartSerieTooltip.style.top = `${hit.y}px`;
+    chartSerieTooltip.classList.add("visible");
+  });
+
+  container.addEventListener("mouseleave", hideTooltip);
+}
 function drawHBar(ctx, plot, labels, values){
   const {x,y,w,h} = plot;
   const n = labels.length;
@@ -1067,6 +1149,10 @@ function renderSerie(rows){
 
   if (els.tipoSerie.value === "bar") drawBarSeries(ctx, plot, values, maxY);
   else drawLineSeries(ctx, plot, values, maxY);
+
+  chartSerieState.labels = labels;
+  chartSerieState.values = values;
+  chartSerieState.points = els.tipoSerie.value === "line" ? buildLinePoints(plot, values, maxY) : [];
 }
 
 function renderTop(rows, mesKey){
