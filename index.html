@@ -405,32 +405,39 @@
     <div class="errorBox" id="errorBox"></div>
 
     <section class="gridKpis">
-      <div class="kpi">
-        <div class="label">Orçado (Total)</div>
-        <div class="value" id="kpiOrcado">R$ 0,00</div>
-        <div class="delta" id="kpiOrcadoObs">—</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Arrecadado (Ano)</div>
-        <div class="value" id="kpiArrecAno">R$ 0,00</div>
-        <div class="delta" id="kpiArrecAnoObs">—</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Execução (% Orçado)</div>
-        <div class="value" id="kpiExec">0,00%</div>
-        <div class="delta" id="kpiExecObs">—</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Mês selecionado</div>
-        <div class="value" id="kpiMes">R$ 0,00</div>
-        <div class="delta" id="kpiMesObs">—</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Variação vs mês anterior</div>
-        <div class="value" id="kpiVar">—</div>
-        <div class="delta" id="kpiVarObs">—</div>
-      </div>
-    </section>
+  <div class="kpi">
+    <div class="label">Orçado (Total)</div>
+    <div class="value" id="kpiOrcado">R$ 0,00</div>
+    <div class="delta" id="kpiOrcadoObs">—</div>
+  </div>
+
+  <!-- TROCOU: Mês selecionado vem aqui -->
+  <div class="kpi">
+    <div class="label">Mês selecionado</div>
+    <div class="value" id="kpiMes">R$ 0,00</div>
+    <div class="delta" id="kpiMesObs">—</div>
+  </div>
+
+  <div class="kpi">
+    <div class="label">Execução (% Orçado)</div>
+    <div class="value" id="kpiExec">0,00%</div>
+    <div class="delta" id="kpiExecObs">—</div>
+  </div>
+
+  <!-- TROCOU: Arrecadado (Ano) vem aqui -->
+  <div class="kpi">
+    <div class="label">Arrecadado (Ano)</div>
+    <div class="value" id="kpiArrecAno">R$ 0,00</div>
+    <div class="delta" id="kpiArrecAnoObs">—</div>
+  </div>
+
+  <div class="kpi">
+    <div class="label">Variação vs mês anterior</div>
+    <div class="value" id="kpiVar">—</div>
+    <div class="delta" id="kpiVarObs">—</div>
+  </div>
+</section>
+
 
     <section class="gridCharts">
       <div class="panel">
@@ -1412,3 +1419,4 @@ els.btnExportCSV.addEventListener("click", ()=>{
 
 </body>
 </html>
+
