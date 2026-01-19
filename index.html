@@ -292,6 +292,14 @@
     }
     tbody tr:hover{ background: rgba(255,255,255,.03); }
 
+    .clickFilter{
+      cursor:pointer;
+    }
+    .clickFilter:hover{
+      color: var(--accent);
+      text-decoration: underline;
+    }
+
     .searchRow{
       display:flex;
       gap:10px;
@@ -1342,15 +1350,6 @@ function renderBuilder(rows, mesKey){
   }
 }
 
-function escapeHtml(s){
-  return (s ?? "").toString()
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-
 function renderTable(rows, mesKey){
   const idx = MONTHS.findIndex(m=>m.key===mesKey);
   const sorted = rows.slice().sort((a,b)=> (sumMonth(b, mesKey) - sumMonth(a, mesKey)));
@@ -1365,14 +1364,29 @@ function renderTable(rows, mesKey){
   for (const r of filtered.slice(0, 900)){
     const tr = document.createElement("tr");
     const acum = sumAcum(r, mesKey);
-    tr.innerHTML = `
-      <td>${escapeHtml(r.ficha)}</td>
-      <td>${escapeHtml(r.natureza)}</td>
-      <td title="${escapeHtml(r.nome)}">${escapeHtml(r.nome)}</td>
-      <td>${moneyBR(r.orcado)}</td>
-      <td>${moneyBR(sumMonth(r, mesKey))}</td>
-      <td>${moneyBR(acum)}</td>
-    `;
+
+    const tdFicha = document.createElement("td");
+    tdFicha.textContent = r.ficha ?? "";
+
+    const tdNatureza = document.createElement("td");
+    tdNatureza.textContent = r.natureza ?? "";
+
+    const tdNome = document.createElement("td");
+    tdNome.textContent = r.nome ?? "";
+    tdNome.title = r.nome ?? "";
+    tdNome.dataset.nome = r.nome ?? "";
+    tdNome.classList.add("clickFilter");
+
+    const tdOrcado = document.createElement("td");
+    tdOrcado.textContent = moneyBR(r.orcado);
+
+    const tdMes = document.createElement("td");
+    tdMes.textContent = moneyBR(sumMonth(r, mesKey));
+
+    const tdAcum = document.createElement("td");
+    tdAcum.textContent = moneyBR(acum);
+
+    tr.append(tdFicha, tdNatureza, tdNome, tdOrcado, tdMes, tdAcum);
     frag.appendChild(tr);
   }
   els.tbody.appendChild(frag);
@@ -1506,6 +1520,18 @@ els.btnLimpar.addEventListener("click", ()=>{
 
 els.quickSearch.addEventListener("input", ()=>{
   els.tableSearch.value = els.quickSearch.value;
+  updateUI();
+});
+
+els.tbody.addEventListener("click", (event)=>{
+  const target = event.target.closest(".clickFilter");
+  if (!target || !els.tbody.contains(target)) return;
+  const nome = target.dataset.nome || target.textContent;
+  if (!nome) return;
+  els.quickSearch.value = nome;
+  els.tableSearch.value = nome;
+  els.quickSearch.focus();
+  els.quickSearch.select();
   updateUI();
 });
 
