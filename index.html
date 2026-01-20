@@ -475,6 +475,8 @@
         <option value="natureza">Natureza da Receita</option>
         <option value="ficha">Ficha</option>
         <option value="nome">Nome da Ficha</option>
+        <option value="entidade">Entidade</option>
+        <option value="fonteRecurso">Fonte de recurso</option>
       </select>
     </div>
 
@@ -1549,7 +1551,15 @@ function renderTop(rows, mesKey){
   clearChart(ctx,w,h);
 
   const dim = els.dimensao.value;
-  els.miniDim.textContent = dim === "natureza" ? "Natureza" : dim === "ficha" ? "Ficha" : "Nome";
+  els.miniDim.textContent = dim === "natureza"
+    ? "Natureza"
+    : dim === "ficha"
+      ? "Ficha"
+      : dim === "nome"
+        ? "Nome"
+        : dim === "entidade"
+          ? "Entidade"
+          : "Fonte de recurso";
   canvas.classList.toggle("chartClickable", dim === "ficha");
 
   const grouped = groupSum(rows, dim, mesKey, "acum")
