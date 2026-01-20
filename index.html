@@ -111,6 +111,9 @@
       outline:none;
       font-size:13px;
     }
+    .ctrl select[multiple]{
+      min-height:140px;
+    }
     .ctrl input[type="file"]{
       width:100%;
       color:rgba(233,238,252,.85);
@@ -449,7 +452,7 @@
       <input id="fileInput" type="file" accept=".csv,.txt" />
       <div class="hint">
         Use CSV do Excel (geralmente separado por <b>;</b>).
-        Cabeçalho esperado: ficha | natureza | nome | orçado | janeiro..dezembro
+        Cabeçalho esperado: ficha | natureza | nome | orçado | janeiro..dezembro (opcional: entidade, fonte de recurso)
       </div>
     </div>
 
@@ -489,6 +492,18 @@
     <div class="ctrl">
       <label>Pesquisa rápida (filtra tabela)</label>
       <input id="quickSearch" type="text" placeholder="Ex.: IPTU, ITBI, IRRF..." />
+    </div>
+
+    <div class="ctrl">
+      <label>Entidade (multi-seleção)</label>
+      <select id="entidadeFilter" multiple></select>
+      <div class="hint">Use Ctrl/Cmd para selecionar mais de uma opção.</div>
+    </div>
+
+    <div class="ctrl">
+      <label>Fonte de recurso (multi-seleção)</label>
+      <select id="fonteFilter" multiple></select>
+      <div class="hint">Use Ctrl/Cmd para selecionar mais de uma opção.</div>
     </div>
 
     <div class="ctrl">
@@ -825,6 +840,8 @@ function normalizeDataset(raw){
   const colNatureza = pickColumnKey(keys, ["natureza", "natureza da receita", "natureza da rec", "natureza da rec."]);
   const colNome = pickColumnKey(keys, ["nome", "nome da ficha", "nome da receita"]);
   const colOrcado = pickColumnKey(keys, ["orcado", "orçado", "orcamento", "orçamento"]);
+  const colEntidade = pickColumnKey(keys, ["entidade"]);
+  const colFonteRecurso = pickColumnKey(keys, ["fonte de recurso", "fonte recurso", "fonte de recursos"]);
 
   if (!colFicha || !colNatureza || !colNome || !colOrcado){
     throw new Error(
@@ -855,6 +872,8 @@ function normalizeDataset(raw){
     const natureza = (r[colNatureza] ?? "").toString().trim();
     const nome = (r[colNome] ?? "").toString().trim();
     const orcado = parseBRNumber(r[colOrcado]);
+    const entidade = colEntidade ? (r[colEntidade] ?? "").toString().trim() : "";
+    const fonteRecurso = colFonteRecurso ? (r[colFonteRecurso] ?? "").toString().trim() : "";
 
     const values = {};
     for (const m of MONTHS){
@@ -870,8 +889,8 @@ function normalizeDataset(raw){
     if (isEmpty) continue;
 
     out.push({
-      ficha, natureza, nome, orcado, values,
-      _search: normalizeText([ficha, natureza, nome].join(" ")),
+      ficha, natureza, nome, orcado, values, entidade, fonteRecurso,
+      _search: normalizeText([ficha, natureza, nome, entidade, fonteRecurso].join(" ")),
     });
   }
   return out;
@@ -883,6 +902,8 @@ function normalizeDataset(raw){
 let DATA = [];
 let META = { fonte:"—", atualizado:"—" };
 let SELECTED_FICHAS = new Set();
+let SELECTED_ENTIDADES = new Set();
+let SELECTED_FONTES = new Set();
 const SORT_STATE = { key: null, dir: "asc" };
 
 const els = {
@@ -895,6 +916,8 @@ const els = {
   dimensao: document.getElementById("dimensao"),
   tipoSerie: document.getElementById("tipoSerie"),
   quickSearch: document.getElementById("quickSearch"),
+  entidadeFilter: document.getElementById("entidadeFilter"),
+  fonteFilter: document.getElementById("fonteFilter"),
   btnLimparFichas: document.getElementById("btnLimparFichas"),
   fichaChips: document.getElementById("fichaChips"),
   pillStatus: document.getElementById("pillStatus"),
@@ -990,6 +1013,8 @@ function toggleSort(key){
       DATA = obj.data || [];
       META = obj.meta || META;
       SELECTED_FICHAS = new Set(obj.selectedFichas || []);
+      SELECTED_ENTIDADES = new Set(obj.selectedEntidades || []);
+      SELECTED_FONTES = new Set(obj.selectedFontes || []);
       els.municipio.value = obj.municipio || "";
       els.ano.value = obj.ano || "";
       els.mesFoco.value = obj.mesFoco || "janeiro";
@@ -1019,6 +1044,8 @@ function saveState(){
     data: DATA,
     meta: META,
     selectedFichas: Array.from(SELECTED_FICHAS),
+    selectedEntidades: Array.from(SELECTED_ENTIDADES),
+    selectedFontes: Array.from(SELECTED_FONTES),
     municipio: els.municipio.value,
     ano: els.ano.value,
     mesFoco: els.mesFoco.value,
@@ -1077,11 +1104,13 @@ function applyFilters(){
   const selected = SELECTED_FICHAS;
 
   let chartRows = DATA.slice();
+  chartRows = applyMultiFilters(chartRows);
   if (selected.size){
     chartRows = chartRows.filter(r => selected.has(r.ficha));
   }
 
   let tableRows = DATA.slice();
+  tableRows = applyMultiFilters(tableRows);
   if (q) tableRows = tableRows.filter(r => matchesTableQuery(r, q));
 
   return { chartRows, tableRows, mesKey };
@@ -1090,6 +1119,74 @@ function applyFilters(){
 function filterTableRows(rows){
   const q = normalizeText(els.tableSearch.value || "");
   return q ? rows.filter(r => matchesTableQuery(r, q)) : rows;
+}
+
+function applyMultiFilters(rows){
+  let out = rows;
+  if (SELECTED_ENTIDADES.size){
+    out = out.filter(r => SELECTED_ENTIDADES.has((r.entidade || "").toString().trim()));
+  }
+  if (SELECTED_FONTES.size){
+    out = out.filter(r => SELECTED_FONTES.has((r.fonteRecurso || "").toString().trim()));
+  }
+  return out;
+}
+
+function collectUniqueValues(rows, key){
+  const set = new Set();
+  for (const r of rows){
+    const v = (r[key] || "").toString().trim();
+    if (v) set.add(v);
+  }
+  return Array.from(set).sort((a,b)=>a.localeCompare(b, "pt-BR", {numeric:true, sensitivity:"base"}));
+}
+
+function getSelectedValues(selectEl){
+  return Array.from(selectEl.selectedOptions || []).map(opt => opt.value).filter(Boolean);
+}
+
+function syncMultiSelect(selectEl, values, selectedSet, emptyLabel){
+  const allowed = new Set(values);
+  const nextSelected = new Set(Array.from(selectedSet).filter(v => allowed.has(v)));
+  selectEl.innerHTML = "";
+
+  if (!values.length){
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = emptyLabel;
+    opt.disabled = true;
+    opt.selected = true;
+    selectEl.appendChild(opt);
+    selectedSet.clear();
+    return;
+  }
+
+  for (const v of values){
+    const opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = v;
+    if (nextSelected.has(v)) opt.selected = true;
+    selectEl.appendChild(opt);
+  }
+
+  selectedSet.clear();
+  for (const v of nextSelected) selectedSet.add(v);
+}
+
+function syncFilterOptions(){
+  const entidades = collectUniqueValues(DATA, "entidade");
+  const fontes = collectUniqueValues(DATA, "fonteRecurso");
+  syncMultiSelect(els.entidadeFilter, entidades, SELECTED_ENTIDADES, "Sem entidades");
+  syncMultiSelect(els.fonteFilter, fontes, SELECTED_FONTES, "Sem fontes");
+}
+
+function refreshMultiSelections(){
+  if (els.entidadeFilter.options.length && !els.entidadeFilter.options[0].disabled){
+    SELECTED_ENTIDADES = new Set(getSelectedValues(els.entidadeFilter));
+  }
+  if (els.fonteFilter.options.length && !els.fonteFilter.options[0].disabled){
+    SELECTED_FONTES = new Set(getSelectedValues(els.fonteFilter));
+  }
 }
 
 function toggleFichaSelection(ficha){
@@ -1704,6 +1801,9 @@ function updateUI(){
   clearError();
   updateHeader();
 
+  refreshMultiSelections();
+  syncFilterOptions();
+
   const { chartRows, tableRows, mesKey } = applyFilters();
   els.pillStatus.textContent = DATA.length ? `Base carregada • ${DATA.length} linhas` : "Nenhum arquivo carregado";
 
@@ -1764,6 +1864,8 @@ els.btnLimpar.addEventListener("click", ()=>{
   DATA = [];
   META = { fonte:"—", atualizado:"—" };
   SELECTED_FICHAS.clear();
+  SELECTED_ENTIDADES.clear();
+  SELECTED_FONTES.clear();
   localStorage.removeItem("receitas_dashboard_offline_v2");
   els.fileInput.value = "";
   updateUI();
@@ -1773,6 +1875,10 @@ els.btnLimpar.addEventListener("click", ()=>{
   els.municipio, els.ano, els.mesFoco, els.dimensao, els.tipoSerie,
   els.quickSearch, els.tableSearch, els.bTipo, els.bMetrica, els.bEixo, els.bAgrupar
 ].forEach(el => el.addEventListener("input", updateUI));
+
+[els.entidadeFilter, els.fonteFilter].forEach(el => {
+  el.addEventListener("change", updateUI);
+});
 
 tableSortButtons.forEach(btn => {
   btn.addEventListener("click", () => toggleSort(btn.dataset.sort));
