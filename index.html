@@ -571,6 +571,11 @@
       </div>
     </div>
     <div class="ctrl">
+      <label>Meses visíveis (Receitas por mês)</label>
+      <select id="mesVisualizacao" multiple></select>
+      <div class="hint">Selecione um ou mais meses para filtrar o gráfico.</div>
+    </div>
+    <div class="ctrl">
       <label>Ano anterior (opcional)</label>
       <input id="anoAnterior" type="text" placeholder="Ex.: 2024" />
     </div>
@@ -1375,6 +1380,7 @@ function initDashboard(root, storageKey){
   let SELECTED_FICHAS = new Set();
   let SELECTED_ENTIDADES = new Set();
   let SELECTED_FONTES = new Set();
+  let SELECTED_MESES = new Set(MONTHS.map(m => m.key));
   const SORT_STATE = { key: null, dir: "asc" };
   const shouldAbbrevEntidade = root.dataset.tab === "1";
 
@@ -1387,6 +1393,7 @@ function initDashboard(root, storageKey){
     btnProcessar: root.querySelector("#btnProcessar"),
     btnLimpar: root.querySelector("#btnLimpar"),
     mesFoco: root.querySelector("#mesFoco"),
+    mesVisualizacao: root.querySelector("#mesVisualizacao"),
     dimensao: root.querySelector("#dimensao"),
     tipoSerie: root.querySelector("#tipoSerie"),
     quickSearch: root.querySelector("#quickSearch"),
@@ -1490,6 +1497,15 @@ function initDashboard(root, storageKey){
       els.mesFoco.appendChild(opt);
     }
     els.mesFoco.value = "janeiro";
+    if (els.mesVisualizacao){
+      for (const m of MONTHS){
+        const opt = document.createElement("option");
+        opt.value = m.key;
+        opt.textContent = m.label;
+        opt.selected = true;
+        els.mesVisualizacao.appendChild(opt);
+      }
+    }
 
     const saved = localStorage.getItem(storageKey);
     if (saved){
@@ -1504,6 +1520,7 @@ function initDashboard(root, storageKey){
         SELECTED_FICHAS = new Set(obj.selectedFichas || []);
         SELECTED_ENTIDADES = new Set(obj.selectedEntidades || []);
         SELECTED_FONTES = new Set(obj.selectedFontes || []);
+        SELECTED_MESES = new Set(obj.selectedMeses || MONTHS.map(m => m.key));
         els.municipio.value = obj.municipio || "";
         els.ano.value = obj.ano || "";
         els.anoAnterior.value = obj.anoAnterior || "";
@@ -1518,6 +1535,16 @@ function initDashboard(root, storageKey){
           chartSerieState.visibility = { ...chartSerieState.visibility, ...obj.serieVisibility };
         }
       }catch(e){}
+    }
+    if (els.mesVisualizacao){
+      const allowed = new Set(MONTHS.map(m => m.key));
+      SELECTED_MESES = new Set(Array.from(SELECTED_MESES).filter(m => allowed.has(m)));
+      if (!SELECTED_MESES.size){
+        SELECTED_MESES = new Set(MONTHS.map(m => m.key));
+      }
+      for (const opt of els.mesVisualizacao.options){
+        opt.selected = SELECTED_MESES.has(opt.value);
+      }
     }
 
     mountCanvas("chartSerie");
@@ -1542,6 +1569,7 @@ function initDashboard(root, storageKey){
       selectedFichas: Array.from(SELECTED_FICHAS),
       selectedEntidades: Array.from(SELECTED_ENTIDADES),
       selectedFontes: Array.from(SELECTED_FONTES),
+      selectedMeses: Array.from(SELECTED_MESES),
       municipio: els.municipio.value,
       ano: els.ano.value,
       anoAnterior: els.anoAnterior.value,
@@ -1712,6 +1740,40 @@ function initDashboard(root, storageKey){
     if (els.fonteFilter.options.length && !els.fonteFilter.options[0].disabled){
       SELECTED_FONTES = new Set(getSelectedValues(els.fonteFilter));
     }
+  }
+
+  function refreshMonthSelections(){
+    if (!els.mesVisualizacao) return;
+    const selected = getSelectedValues(els.mesVisualizacao);
+    if (selected.length){
+      SELECTED_MESES = new Set(selected);
+    } else {
+      SELECTED_MESES = new Set(MONTHS.map(m => m.key));
+      for (const opt of els.mesVisualizacao.options){
+        opt.selected = true;
+      }
+    }
+  }
+
+  function getVisibleMonths(){
+    const selected = Array.from(SELECTED_MESES);
+    const allowed = new Set(MONTHS.map(m => m.key));
+    const filtered = selected.filter(m => allowed.has(m));
+    if (!filtered.length) return MONTHS.slice();
+    return MONTHS.filter(m => filtered.includes(m.key));
+  }
+
+  function updateMiniPeriodo(visibleMonths){
+    if (!els.miniPeriodo) return;
+    if (!visibleMonths.length || visibleMonths.length === MONTHS.length){
+      els.miniPeriodo.textContent = "jan..dez";
+      return;
+    }
+    if (visibleMonths.length === 1){
+      els.miniPeriodo.textContent = visibleMonths[0].label;
+      return;
+    }
+    els.miniPeriodo.textContent = `${visibleMonths.length} meses selecionados`;
   }
 
   function toggleFichaSelection(ficha){
@@ -2092,19 +2154,20 @@ function initDashboard(root, storageKey){
     return rows;
   }
 
-  function renderSerie(rows, prevRows){
+  function renderSerie(rows, prevRows, visibleMonths){
     const canvas = getCanvas("chartSerie");
     const {ctx,w,h} = fitCanvas(canvas);
     clearChart(ctx,w,h);
 
+    const months = (visibleMonths && visibleMonths.length) ? visibleMonths : MONTHS;
     const totals = totalByMonth(rows);
-    const labels = MONTHS.map(m=>m.label);
-    const values = MONTHS.map(m=>totals[m.key] || 0);
+    const labels = months.map(m=>m.label);
+    const values = months.map(m=>totals[m.key] || 0);
     const avgValue = values.length ? values.reduce((a,v)=>a+v,0) / values.length : 0;
     const avgSeries = values.map(() => avgValue);
     const hasPrev = prevRows.length > 0;
     const prevTotals = hasPrev ? totalByMonth(prevRows) : {};
-    const prevValues = hasPrev ? MONTHS.map(m=>prevTotals[m.key] || 0) : [];
+    const prevValues = hasPrev ? months.map(m=>prevTotals[m.key] || 0) : [];
     const maxY = Math.max(...values, avgValue, ...(hasPrev ? prevValues : []), 1);
 
     const plot = {x:60, y:16, w:w-80, h:h-70};
@@ -2428,7 +2491,6 @@ function initDashboard(root, storageKey){
       els.kpiVarObs.textContent = `Comparado a ${MONTHS[idx-1]?.label || ""}`;
     }
 
-    els.miniPeriodo.textContent = `até ${MONTHS[idx]?.label || "—"}`;
   }
 
   function updateUI(){
@@ -2436,6 +2498,7 @@ function initDashboard(root, storageKey){
     updateHeader();
 
     refreshMultiSelections();
+    refreshMonthSelections();
     syncFilterOptions();
 
     const { chartRows, tableRows, mesKey } = applyFilters();
@@ -2448,7 +2511,9 @@ function initDashboard(root, storageKey){
     syncSerieLegend();
 
     updateKPIs(chartRows, mesKey);
-    renderSerie(chartRows, prevChartRows);
+    const visibleMonths = getVisibleMonths();
+    updateMiniPeriodo(visibleMonths);
+    renderSerie(chartRows, prevChartRows, visibleMonths);
     renderTop(chartRows, mesKey);
     renderBuilder(chartRows, mesKey);
     renderTable(tableRows, mesKey);
@@ -2538,9 +2603,9 @@ function initDashboard(root, storageKey){
     els.quickSearch, els.tableSearch, els.bTipo, els.bMetrica, els.bEixo, els.bAgrupar
   ].forEach(el => el.addEventListener("input", updateUI));
 
-  [els.entidadeFilter, els.fonteFilter].forEach(el => {
-    el.addEventListener("change", updateUI);
-  });
+  [els.entidadeFilter, els.fonteFilter, els.mesVisualizacao]
+    .filter(Boolean)
+    .forEach(el => el.addEventListener("change", updateUI));
 
   tableSortButtons.forEach(btn => {
     btn.addEventListener("click", () => toggleSort(btn.dataset.sort));
