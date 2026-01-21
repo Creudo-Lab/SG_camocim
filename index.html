@@ -2097,6 +2097,7 @@ function initDashboard(root, storageKey){
     const showAvg = chartSerieState.visibility.avg !== false;
     const showPrev = chartSerieState.visibility.prev !== false && hasPrev;
 
+    const prevDash = root.dataset.tab === "1" ? [] : [3,4];
     if (els.tipoSerie.value === "bar"){
       if (showTotal) drawBarSeries(ctx, plot, values, maxY);
       if (showAvg) drawLineSeries(ctx, plot, avgSeries, maxY, {
@@ -2111,7 +2112,7 @@ function initDashboard(root, storageKey){
         pointColor: "rgba(139,92,246,.95)",
         pointRadius: 2,
         lineWidth: 2,
-        dash: [3,4],
+        dash: prevDash,
       });
     } else {
       if (showTotal) drawLineSeries(ctx, plot, values, maxY, {
@@ -2123,7 +2124,7 @@ function initDashboard(root, storageKey){
         pointColor: "rgba(139,92,246,.95)",
         pointRadius: 3,
         lineWidth: 2,
-        dash: [3,4],
+        dash: prevDash,
       });
       if (showAvg) drawLineSeries(ctx, plot, avgSeries, maxY, {
         color: "rgba(249,115,22,.9)",
