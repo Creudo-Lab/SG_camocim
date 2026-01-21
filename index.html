@@ -24,6 +24,7 @@
       --line:rgba(255,255,255,.08);
       --accent:#6ee7ff;
       --accent2:#8b5cf6;
+      --avg:#f97316;
       --good:#22c55e;
       --warn:#fbbf24;
       --bad:#ef4444;
@@ -299,6 +300,50 @@
     }
     .panelHeader h3{ margin:0; font-size:13px; }
     .panelHeader .mini{ color:var(--muted); font-size:12px; }
+    .panelMeta{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .chartLegend{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:4px 10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .legendItem{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      font-size:12px;
+      color:rgba(233,238,252,.82);
+      cursor:pointer;
+      user-select:none;
+    }
+    .legendItem input{
+      margin:0;
+      accent-color: var(--accent);
+    }
+    .legendItem.is-off{
+      color: rgba(233,238,252,.45);
+    }
+    .legendItem.is-off .legendSwatch{
+      opacity:.4;
+    }
+    .legendSwatch{
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      display:inline-block;
+      box-shadow: 0 0 0 2px rgba(0,0,0,.2);
+    }
+    .legendSwatch.total{ background: rgba(110,231,255,.95); }
+    .legendSwatch.avg{ background: var(--avg); }
     .panelBody{ padding:10px 10px 8px; }
 
     #chartSerie{ position:relative; }
@@ -613,7 +658,21 @@
       <div class="panel">
         <div class="panelHeader">
           <h3>Receitas por mês (Total)</h3>
-          <div class="mini" id="miniPeriodo">jan..dez</div>
+          <div class="panelMeta">
+            <div class="mini" id="miniPeriodo">jan..dez</div>
+            <div class="chartLegend" aria-label="Legenda do gráfico de receitas por mês">
+              <label class="legendItem" data-series-label="total">
+                <input type="checkbox" data-series="total" checked />
+                <span class="legendSwatch total" aria-hidden="true"></span>
+                Total
+              </label>
+              <label class="legendItem" data-series-label="avg">
+                <input type="checkbox" data-series="avg" checked />
+                <span class="legendSwatch avg" aria-hidden="true"></span>
+                Média
+              </label>
+            </div>
+          </div>
         </div>
         <div class="panelBody">
           <div id="chartSerie" style="height:360px;"></div>
@@ -862,7 +921,21 @@
       <div class="panel">
         <div class="panelHeader">
           <h3>Receitas por mês (Total)</h3>
-          <div class="mini" id="miniPeriodo">jan..dez</div>
+          <div class="panelMeta">
+            <div class="mini" id="miniPeriodo">jan..dez</div>
+            <div class="chartLegend" aria-label="Legenda do gráfico de receitas por mês">
+              <label class="legendItem" data-series-label="total">
+                <input type="checkbox" data-series="total" checked />
+                <span class="legendSwatch total" aria-hidden="true"></span>
+                Total
+              </label>
+              <label class="legendItem" data-series-label="avg">
+                <input type="checkbox" data-series="avg" checked />
+                <span class="legendSwatch avg" aria-hidden="true"></span>
+                Média
+              </label>
+            </div>
+          </div>
         </div>
         <div class="panelBody">
           <div id="chartSerie" style="height:360px;"></div>
@@ -1248,6 +1321,11 @@ function initDashboard(root, storageKey){
     points: [],
     labels: [],
     values: [],
+    avgValue: 0,
+    visibility: {
+      total: true,
+      avg: true,
+    },
   };
   let chartSerieTooltip = null;
   const chartTopState = {
@@ -1255,6 +1333,7 @@ function initDashboard(root, storageKey){
   };
   let chartTopTooltip = null;
   const tableSortButtons = Array.from(root.querySelectorAll(".sortBtn"));
+  const serieLegendInputs = Array.from(root.querySelectorAll(".chartLegend input[data-series]"));
 
   function showError(msg){
     els.errorBox.style.display = msg ? "block" : "none";
@@ -1318,6 +1397,9 @@ function initDashboard(root, storageKey){
         els.bMetrica.value = obj.bMetrica || "mes";
         els.bEixo.value = obj.bEixo || "dim";
         els.bAgrupar.value = obj.bAgrupar || "none";
+        if (obj.serieVisibility){
+          chartSerieState.visibility = { ...chartSerieState.visibility, ...obj.serieVisibility };
+        }
       }catch(e){}
     }
 
@@ -1328,6 +1410,7 @@ function initDashboard(root, storageKey){
     setupChartTopTooltip();
     setupChartTopSelection();
 
+    syncSerieLegend();
     updateSortButtons();
     updateUI();
     window.addEventListener("resize", ()=>updateUI());
@@ -1349,6 +1432,7 @@ function initDashboard(root, storageKey){
       bMetrica: els.bMetrica.value,
       bEixo: els.bEixo.value,
       bAgrupar: els.bAgrupar.value,
+      serieVisibility: chartSerieState.visibility,
     };
     localStorage.setItem(storageKey, JSON.stringify(obj));
   }
@@ -1496,6 +1580,16 @@ function initDashboard(root, storageKey){
     updateUI();
   }
 
+  function syncSerieLegend(){
+    serieLegendInputs.forEach(input => {
+      const series = input.dataset.series;
+      const isVisible = chartSerieState.visibility[series] !== false;
+      input.checked = isVisible;
+      const label = input.closest(".legendItem");
+      if (label) label.classList.toggle("is-off", !isVisible);
+    });
+  }
+
   function renderFichaChips(){
     const container = els.fichaChips;
     container.innerHTML = "";
@@ -1617,13 +1711,23 @@ function initDashboard(root, storageKey){
       ctx.restore();
     }
   }
-  function drawLineSeries(ctx, plot, values, maxY){
+  function drawLineSeries(ctx, plot, values, maxY, options = {}){
     const {x,y,w,h} = plot;
     const n = values.length;
     const step = w / Math.max(1,n-1);
 
-    ctx.strokeStyle = "rgba(110,231,255,.90)";
-    ctx.lineWidth = 2;
+    const {
+      color = "rgba(110,231,255,.90)",
+      pointColor = color,
+      pointRadius = 3,
+      lineWidth = 2,
+      drawPoints = true,
+      dash = [],
+    } = options;
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.setLineDash(dash);
     ctx.beginPath();
     for(let i=0;i<n;i++){
       const v = values[i] || 0;
@@ -1632,15 +1736,18 @@ function initDashboard(root, storageKey){
       if (i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
     }
     ctx.stroke();
+    ctx.setLineDash([]);
 
-    ctx.fillStyle = "rgba(110,231,255,.95)";
-    for(let i=0;i<n;i++){
-      const v = values[i] || 0;
-      const xx = x + step*i;
-      const yy = y + h - (maxY ? (v/maxY)*h : 0);
-      ctx.beginPath();
-      ctx.arc(xx,yy,3,0,Math.PI*2);
-      ctx.fill();
+    if (drawPoints){
+      ctx.fillStyle = pointColor;
+      for(let i=0;i<n;i++){
+        const v = values[i] || 0;
+        const xx = x + step*i;
+        const yy = y + h - (maxY ? (v/maxY)*h : 0);
+        ctx.beginPath();
+        ctx.arc(xx,yy,pointRadius,0,Math.PI*2);
+        ctx.fill();
+      }
     }
   }
   function drawBarSeries(ctx, plot, values, maxY){
@@ -1657,7 +1764,7 @@ function initDashboard(root, storageKey){
       ctx.fillRect(xx, yy, bw, barH);
     }
   }
-  function buildLinePoints(plot, values, maxY){
+  function buildLinePoints(plot, values, maxY, labels, seriesLabel){
     const {x,y,w,h} = plot;
     const n = values.length;
     const step = w / Math.max(1,n-1);
@@ -1666,7 +1773,7 @@ function initDashboard(root, storageKey){
       const v = values[i] || 0;
       const xx = x + step*i;
       const yy = y + h - (maxY ? (v/maxY)*h : 0);
-      points.push({x: xx, y: yy, value: v, label: chartSerieState.labels[i]});
+      points.push({x: xx, y: yy, value: v, label: labels[i], series: seriesLabel});
     }
     return points;
   }
@@ -1702,7 +1809,8 @@ function initDashboard(root, storageKey){
         }
       }
       if (!hit) return hideTooltip();
-      chartSerieTooltip.textContent = `${hit.label} • Valor do mês: ${moneyBR(hit.value)}`;
+      const prefix = hit.series === "Média" ? "Média simples" : "Valor do mês";
+      chartSerieTooltip.textContent = `${hit.label} • ${prefix}: ${moneyBR(hit.value)}`;
       chartSerieTooltip.style.left = `${hit.x}px`;
       chartSerieTooltip.style.top = `${hit.y}px`;
       chartSerieTooltip.classList.add("visible");
@@ -1825,19 +1933,52 @@ function initDashboard(root, storageKey){
     const totals = totalByMonth(rows);
     const labels = MONTHS.map(m=>m.label);
     const values = MONTHS.map(m=>totals[m.key] || 0);
-    const maxY = Math.max(...values, 1);
+    const avgValue = values.length ? values.reduce((a,v)=>a+v,0) / values.length : 0;
+    const avgSeries = values.map(() => avgValue);
+    const maxY = Math.max(...values, avgValue, 1);
 
     const plot = {x:60, y:16, w:w-80, h:h-70};
     drawGrid(ctx, plot, 4);
     drawYAxisLabels(ctx, plot, maxY, 4);
     drawXAxisLabels(ctx, plot, labels);
 
-    if (els.tipoSerie.value === "bar") drawBarSeries(ctx, plot, values, maxY);
-    else drawLineSeries(ctx, plot, values, maxY);
+    const showTotal = chartSerieState.visibility.total !== false;
+    const showAvg = chartSerieState.visibility.avg !== false;
+
+    if (els.tipoSerie.value === "bar"){
+      if (showTotal) drawBarSeries(ctx, plot, values, maxY);
+      if (showAvg) drawLineSeries(ctx, plot, avgSeries, maxY, {
+        color: "rgba(249,115,22,.9)",
+        pointColor: "rgba(249,115,22,.95)",
+        pointRadius: 2,
+        lineWidth: 2,
+        dash: [6,4],
+      });
+    } else {
+      if (showTotal) drawLineSeries(ctx, plot, values, maxY, {
+        color: "rgba(110,231,255,.90)",
+        pointColor: "rgba(110,231,255,.95)",
+      });
+      if (showAvg) drawLineSeries(ctx, plot, avgSeries, maxY, {
+        color: "rgba(249,115,22,.9)",
+        pointColor: "rgba(249,115,22,.95)",
+        pointRadius: 2,
+        lineWidth: 2,
+        dash: [6,4],
+      });
+    }
 
     chartSerieState.labels = labels;
     chartSerieState.values = values;
-    chartSerieState.points = els.tipoSerie.value === "line" ? buildLinePoints(plot, values, maxY) : [];
+    chartSerieState.avgValue = avgValue;
+    const nextPoints = [];
+    if (els.tipoSerie.value === "line" && showTotal){
+      nextPoints.push(...buildLinePoints(plot, values, maxY, labels, "Total"));
+    }
+    if (showAvg){
+      nextPoints.push(...buildLinePoints(plot, avgSeries, maxY, labels, "Média"));
+    }
+    chartSerieState.points = nextPoints;
   }
 
   function renderTop(rows, mesKey){
@@ -2184,6 +2325,15 @@ function initDashboard(root, storageKey){
 
   tableSortButtons.forEach(btn => {
     btn.addEventListener("click", () => toggleSort(btn.dataset.sort));
+  });
+
+  serieLegendInputs.forEach(input => {
+    input.addEventListener("change", () => {
+      const series = input.dataset.series;
+      chartSerieState.visibility[series] = input.checked;
+      syncSerieLegend();
+      updateUI();
+    });
   });
 
   els.selectAllFiltered.addEventListener("change", ()=>{
