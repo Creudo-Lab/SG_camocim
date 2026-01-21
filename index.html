@@ -1295,7 +1295,9 @@ function normalizeDataset(raw){
     const nome = (r[colNome] ?? "").toString().trim();
     const orcado = parseBRNumber(r[colOrcado]);
     const entidade = colEntidade ? (r[colEntidade] ?? "").toString().trim() : "";
-    const fonteRecurso = colFonteRecurso ? (r[colFonteRecurso] ?? "").toString().trim() : "";
+    const fonteRecurso = colFonteRecurso
+      ? normalizeFonteRecursoValue(r[colFonteRecurso])
+      : "";
 
     const values = {};
     for (const m of MONTHS){
@@ -1316,6 +1318,20 @@ function normalizeDataset(raw){
     });
   }
   return out;
+}
+
+function normalizeFonteRecursoValue(value){
+  const trimmed = (value ?? "").toString().trim();
+  if (!trimmed) return "";
+
+  const compact = trimmed.replace(/\s+/g, "");
+  if (/^\d\.\d{3}$/.test(compact)) return compact;
+  if (/^\d{4}$/.test(compact)) return `${compact[0]}.${compact.slice(1)}`;
+
+  const digits = compact.replace(/\D/g, "");
+  if (digits.length === 4) return `${digits[0]}.${digits.slice(1)}`;
+
+  return trimmed;
 }
 
 function abbreviateEntidade(entidade){
@@ -1625,20 +1641,15 @@ function initDashboard(root, storageKey){
   }
 
   function formatFonteRecursoLabel(value){
-    const trimmed = (value ?? "").toString().trim();
-    if (!trimmed) return value;
-
-    let formatted = trimmed.replace(/\s+/g, "");
-    if (/^\d{4}$/.test(formatted)){
-      formatted = `${formatted[0]}.${formatted.slice(1)}`;
-    }
-    if (!/^\d{1}\.\d{3}$/.test(formatted)){
-      return trimmed;
+    const normalized = normalizeFonteRecursoValue(value);
+    if (!normalized) return value;
+    if (!/^\d{1}\.\d{3}$/.test(normalized)){
+      return normalized;
     }
 
-    const isRecursoProprio = formatted === "1.500" || formatted === "1.501";
+    const isRecursoProprio = normalized === "1.500" || normalized === "1.501";
     const tipo = isRecursoProprio ? "Recurso Próprio" : "Recurso Vinculado";
-    return `${formatted} (${tipo})`;
+    return `${normalized} (${tipo})`;
   }
 
   function getSelectedValues(selectEl){
