@@ -1295,7 +1295,9 @@ function normalizeDataset(raw){
     const nome = (r[colNome] ?? "").toString().trim();
     const orcado = parseBRNumber(r[colOrcado]);
     const entidade = colEntidade ? (r[colEntidade] ?? "").toString().trim() : "";
-    const fonteRecurso = colFonteRecurso ? (r[colFonteRecurso] ?? "").toString().trim() : "";
+    const fonteRecurso = colFonteRecurso
+      ? normalizeFonteRecursoValue(r[colFonteRecurso])
+      : "";
 
     const values = {};
     for (const m of MONTHS){
@@ -1316,6 +1318,20 @@ function normalizeDataset(raw){
     });
   }
   return out;
+}
+
+function normalizeFonteRecursoValue(value){
+  const trimmed = (value ?? "").toString().trim();
+  if (!trimmed) return "";
+
+  const compact = trimmed.replace(/\s+/g, "");
+  if (/^\d\.\d{3}$/.test(compact)) return compact;
+  if (/^\d{4}$/.test(compact)) return `${compact[0]}.${compact.slice(1)}`;
+
+  const digits = compact.replace(/\D/g, "");
+  if (digits.length === 4) return `${digits[0]}.${digits.slice(1)}`;
+
+  return trimmed;
 }
 
 function abbreviateEntidade(entidade){
@@ -1610,7 +1626,7 @@ function initDashboard(root, storageKey){
       out = out.filter(r => SELECTED_ENTIDADES.has((r.entidade || "").toString().trim()));
     }
     if (SELECTED_FONTES.size){
-      out = out.filter(r => SELECTED_FONTES.has((r.fonteRecurso || "").toString().trim()));
+      out = out.filter(r => SELECTED_FONTES.has(normalizeFonteRecursoValue(r.fonteRecurso)));
     }
     return out;
   }
@@ -1624,25 +1640,31 @@ function initDashboard(root, storageKey){
     return Array.from(set).sort((a,b)=>a.localeCompare(b, "pt-BR", {numeric:true, sensitivity:"base"}));
   }
 
-  function formatFonteRecursoLabel(value){
-    const trimmed = (value ?? "").toString().trim();
-    if (!trimmed) return value;
-
-    let formatted = trimmed.replace(/\s+/g, "");
-    if (/^\d{4}$/.test(formatted)){
-      formatted = `${formatted[0]}.${formatted.slice(1)}`;
+  function collectUniqueValuesNormalized(rows, key, normalizer){
+    const set = new Set();
+    for (const r of rows){
+      const v = normalizer ? normalizer(r[key]) : (r[key] || "").toString().trim();
+      if (v) set.add(v);
     }
-    if (!/^\d{1}\.\d{3}$/.test(formatted)){
-      return trimmed;
-    }
-
-    const isRecursoProprio = formatted === "1.500" || formatted === "1.501";
-    const tipo = isRecursoProprio ? "Recurso Próprio" : "Recurso Vinculado";
-    return `${formatted} (${tipo})`;
+    return Array.from(set).sort((a,b)=>a.localeCompare(b, "pt-BR", {numeric:true, sensitivity:"base"}));
   }
 
-  function getSelectedValues(selectEl){
-    return Array.from(selectEl.selectedOptions || []).map(opt => opt.value).filter(Boolean);
+  function formatFonteRecursoLabel(value){
+    const normalized = normalizeFonteRecursoValue(value);
+    if (!normalized) return value;
+    if (!/^\d{1}\.\d{3}$/.test(normalized)){
+      return normalized;
+    }
+
+    const isRecursoProprio = normalized === "1.500" || normalized === "1.501";
+    const tipo = isRecursoProprio ? "Recurso Próprio" : "Recurso Vinculado";
+    return `${normalized} (${tipo})`;
+  }
+
+  function getSelectedValues(selectEl, normalizer){
+    return Array.from(selectEl.selectedOptions || [])
+      .map(opt => (normalizer ? normalizer(opt.value) : opt.value))
+      .filter(Boolean);
   }
 
   function syncMultiSelect(selectEl, values, selectedSet, emptyLabel, displayFormatter){
@@ -1675,7 +1697,7 @@ function initDashboard(root, storageKey){
 
   function syncFilterOptions(){
     const entidades = collectUniqueValues(DATA, "entidade");
-    const fontes = collectUniqueValues(DATA, "fonteRecurso");
+    const fontes = collectUniqueValuesNormalized(DATA, "fonteRecurso", normalizeFonteRecursoValue);
     syncMultiSelect(els.entidadeFilter, entidades, SELECTED_ENTIDADES, "Sem entidades");
     syncMultiSelect(
       els.fonteFilter,
@@ -1691,7 +1713,7 @@ function initDashboard(root, storageKey){
       SELECTED_ENTIDADES = new Set(getSelectedValues(els.entidadeFilter));
     }
     if (els.fonteFilter.options.length && !els.fonteFilter.options[0].disabled){
-      SELECTED_FONTES = new Set(getSelectedValues(els.fonteFilter));
+      SELECTED_FONTES = new Set(getSelectedValues(els.fonteFilter, normalizeFonteRecursoValue));
     }
   }
 
