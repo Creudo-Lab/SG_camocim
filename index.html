@@ -344,6 +344,7 @@
     }
     .legendSwatch.total{ background: rgba(110,231,255,.95); }
     .legendSwatch.avg{ background: var(--avg); }
+    .legendSwatch.prev{ background: rgba(139,92,246,.95); }
     .panelBody{ padding:10px 10px 8px; }
 
     #chartSerie{ position:relative; }
@@ -539,6 +540,20 @@
         Cabeçalho esperado: ficha | natureza | nome | orçado | janeiro..dezembro (opcional: entidade, fonte de recurso)
       </div>
     </div>
+    <div class="ctrl">
+      <label>Upload do arquivo do ano anterior (CSV)</label>
+      <input id="fileInputPrev" type="file" accept=".csv,.txt" />
+      <div class="hint">
+        Opcional. Use o mesmo layout do arquivo principal para comparar os dois anos.
+      </div>
+    </div>
+    <div class="ctrl">
+      <label>Upload do arquivo do ano anterior (CSV)</label>
+      <input id="fileInputPrev" type="file" accept=".csv,.txt" />
+      <div class="hint">
+        Opcional. Use o mesmo layout do arquivo principal para comparar os dois anos.
+      </div>
+    </div>
 
     <button class="btn" id="btnProcessar">Carregar & Atualizar</button>
     <button class="btn secondary" id="btnLimpar" style="margin-top:10px;">Limpar dados salvos</button>
@@ -554,6 +569,14 @@
         <label>Mês foco</label>
         <select id="mesFoco"></select>
       </div>
+    </div>
+    <div class="ctrl">
+      <label>Ano anterior (opcional)</label>
+      <input id="anoAnterior" type="text" placeholder="Ex.: 2024" />
+    </div>
+    <div class="ctrl">
+      <label>Ano anterior (opcional)</label>
+      <input id="anoAnterior" type="text" placeholder="Ex.: 2024" />
     </div>
 
     <div class="ctrl">
@@ -613,6 +636,7 @@
       </div>
       <div class="status">
         <div id="statusArquivo">Fonte: —</div>
+        <div id="statusArquivoAnterior">Ano anterior: —</div>
         <div id="statusAtualizacao">Atualização: —</div>
       </div>
     </div>
@@ -670,6 +694,11 @@
                 <input type="checkbox" data-series="avg" checked />
                 <span class="legendSwatch avg" aria-hidden="true"></span>
                 Média
+              </label>
+              <label class="legendItem" data-series-label="prev">
+                <input type="checkbox" data-series="prev" checked />
+                <span class="legendSwatch prev" aria-hidden="true"></span>
+                <span id="legendPrevLabel">Ano anterior</span>
               </label>
             </div>
           </div>
@@ -802,6 +831,13 @@
         Cabeçalho esperado: ficha | natureza | nome | orçado | janeiro..dezembro (opcional: entidade, fonte de recurso)
       </div>
     </div>
+    <div class="ctrl">
+      <label>Upload do arquivo do ano anterior (CSV)</label>
+      <input id="fileInputPrev" type="file" accept=".csv,.txt" />
+      <div class="hint">
+        Opcional. Use o mesmo layout do arquivo principal para comparar os dois anos.
+      </div>
+    </div>
 
     <button class="btn" id="btnProcessar">Carregar & Atualizar</button>
     <button class="btn secondary" id="btnLimpar" style="margin-top:10px;">Limpar dados salvos</button>
@@ -817,6 +853,10 @@
         <label>Mês foco</label>
         <select id="mesFoco"></select>
       </div>
+    </div>
+    <div class="ctrl">
+      <label>Ano anterior (opcional)</label>
+      <input id="anoAnterior" type="text" placeholder="Ex.: 2024" />
     </div>
 
     <div class="ctrl">
@@ -876,6 +916,7 @@
       </div>
       <div class="status">
         <div id="statusArquivo">Fonte: —</div>
+        <div id="statusArquivoAnterior">Ano anterior: —</div>
         <div id="statusAtualizacao">Atualização: —</div>
       </div>
     </div>
@@ -933,6 +974,11 @@
                 <input type="checkbox" data-series="avg" checked />
                 <span class="legendSwatch avg" aria-hidden="true"></span>
                 Média
+              </label>
+              <label class="legendItem" data-series-label="prev">
+                <input type="checkbox" data-series="prev" checked />
+                <span class="legendSwatch prev" aria-hidden="true"></span>
+                <span id="legendPrevLabel">Ano anterior</span>
               </label>
             </div>
           </div>
@@ -1305,6 +1351,8 @@ function applyEntidadeAbbreviations(rows){
 function initDashboard(root, storageKey){
   let DATA = [];
   let META = { fonte:"—", atualizado:"—" };
+  let PREV_DATA = [];
+  let PREV_META = { fonte:"—", atualizado:"—" };
   let SELECTED_FICHAS = new Set();
   let SELECTED_ENTIDADES = new Set();
   let SELECTED_FONTES = new Set();
@@ -1314,7 +1362,9 @@ function initDashboard(root, storageKey){
   const els = {
     municipio: root.querySelector("#municipio"),
     ano: root.querySelector("#ano"),
+    anoAnterior: root.querySelector("#anoAnterior"),
     fileInput: root.querySelector("#fileInput"),
+    fileInputPrev: root.querySelector("#fileInputPrev"),
     btnProcessar: root.querySelector("#btnProcessar"),
     btnLimpar: root.querySelector("#btnLimpar"),
     mesFoco: root.querySelector("#mesFoco"),
@@ -1329,6 +1379,7 @@ function initDashboard(root, storageKey){
     titulo: root.querySelector("#titulo"),
     subtitulo: root.querySelector("#subtitulo"),
     statusArquivo: root.querySelector("#statusArquivo"),
+    statusArquivoAnterior: root.querySelector("#statusArquivoAnterior"),
     statusAtualizacao: root.querySelector("#statusAtualizacao"),
     errorBox: root.querySelector("#errorBox"),
     miniPeriodo: root.querySelector("#miniPeriodo"),
@@ -1353,6 +1404,9 @@ function initDashboard(root, storageKey){
     bMetrica: root.querySelector("#bMetrica"),
     bEixo: root.querySelector("#bEixo"),
     bAgrupar: root.querySelector("#bAgrupar"),
+    legendPrevLabel: root.querySelector("#legendPrevLabel"),
+    legendPrevItem: root.querySelector('[data-series-label="prev"]'),
+    legendPrevInput: root.querySelector('input[data-series="prev"]'),
   };
 
   const chartSerieState = {
@@ -1363,6 +1417,7 @@ function initDashboard(root, storageKey){
     visibility: {
       total: true,
       avg: true,
+      prev: true,
     },
   };
   let chartSerieTooltip = null;
@@ -1424,11 +1479,15 @@ function initDashboard(root, storageKey){
         DATA = obj.data || [];
         if (shouldAbbrevEntidade) applyEntidadeAbbreviations(DATA);
         META = obj.meta || META;
+        PREV_DATA = obj.prevData || [];
+        if (shouldAbbrevEntidade) applyEntidadeAbbreviations(PREV_DATA);
+        PREV_META = obj.prevMeta || PREV_META;
         SELECTED_FICHAS = new Set(obj.selectedFichas || []);
         SELECTED_ENTIDADES = new Set(obj.selectedEntidades || []);
         SELECTED_FONTES = new Set(obj.selectedFontes || []);
         els.municipio.value = obj.municipio || "";
         els.ano.value = obj.ano || "";
+        els.anoAnterior.value = obj.anoAnterior || "";
         els.mesFoco.value = obj.mesFoco || "janeiro";
         els.dimensao.value = obj.dimensao || "natureza";
         els.tipoSerie.value = obj.tipoSerie || "line";
@@ -1459,11 +1518,14 @@ function initDashboard(root, storageKey){
     const obj = {
       data: DATA,
       meta: META,
+      prevData: PREV_DATA,
+      prevMeta: PREV_META,
       selectedFichas: Array.from(SELECTED_FICHAS),
       selectedEntidades: Array.from(SELECTED_ENTIDADES),
       selectedFontes: Array.from(SELECTED_FONTES),
       municipio: els.municipio.value,
       ano: els.ano.value,
+      anoAnterior: els.anoAnterior.value,
       mesFoco: els.mesFoco.value,
       dimensao: els.dimensao.value,
       tipoSerie: els.tipoSerie.value,
@@ -1513,18 +1575,22 @@ function initDashboard(root, storageKey){
     return Array.from(map.entries()).map(([k,v]) => ({k,v}));
   }
 
+  function getChartRows(rows){
+    let chartRows = rows.slice();
+    chartRows = applyMultiFilters(chartRows);
+    if (SELECTED_FICHAS.size){
+      chartRows = chartRows.filter(r => SELECTED_FICHAS.has(r.ficha));
+    }
+    return chartRows;
+  }
+
   function applyFilters(){
     const mesKey = els.mesFoco.value;
     const quick = normalizeText(els.quickSearch.value || "");
     const tableQ = normalizeText(els.tableSearch.value || "");
     const q = quick || tableQ;
-    const selected = SELECTED_FICHAS;
 
-    let chartRows = DATA.slice();
-    chartRows = applyMultiFilters(chartRows);
-    if (selected.size){
-      chartRows = chartRows.filter(r => selected.has(r.ficha));
-    }
+    const chartRows = getChartRows(DATA);
 
     let tableRows = DATA.slice();
     tableRows = applyMultiFilters(tableRows);
@@ -1650,6 +1716,26 @@ function initDashboard(root, storageKey){
       const label = input.closest(".legendItem");
       if (label) label.classList.toggle("is-off", !isVisible);
     });
+  }
+
+  function getPrevLabel(){
+    const manual = (els.anoAnterior?.value || "").trim();
+    if (manual) return manual;
+    const anoAtual = parseInt((els.ano?.value || "").trim(), 10);
+    if (!Number.isNaN(anoAtual)) return String(anoAtual - 1);
+    return "Ano anterior";
+  }
+
+  function syncPrevLegend(){
+    if (!els.legendPrevItem) return;
+    const hasPrev = PREV_DATA.length > 0;
+    els.legendPrevItem.style.display = hasPrev ? "inline-flex" : "none";
+    if (!hasPrev){
+      chartSerieState.visibility.prev = false;
+    }
+    if (els.legendPrevLabel){
+      els.legendPrevLabel.textContent = getPrevLabel();
+    }
   }
 
   function renderFichaChips(){
@@ -1871,7 +1957,7 @@ function initDashboard(root, storageKey){
         }
       }
       if (!hit) return hideTooltip();
-      const prefix = hit.series === "Média" ? "Média simples" : "Valor do mês";
+      const prefix = hit.series === "Média" ? "Média simples" : hit.series;
       chartSerieTooltip.textContent = `${hit.label} • ${prefix}: ${moneyBR(hit.value)}`;
       chartSerieTooltip.style.left = `${hit.x}px`;
       chartSerieTooltip.style.top = `${hit.y}px`;
@@ -1987,7 +2073,7 @@ function initDashboard(root, storageKey){
     return rows;
   }
 
-  function renderSerie(rows){
+  function renderSerie(rows, prevRows){
     const canvas = getCanvas("chartSerie");
     const {ctx,w,h} = fitCanvas(canvas);
     clearChart(ctx,w,h);
@@ -1997,7 +2083,10 @@ function initDashboard(root, storageKey){
     const values = MONTHS.map(m=>totals[m.key] || 0);
     const avgValue = values.length ? values.reduce((a,v)=>a+v,0) / values.length : 0;
     const avgSeries = values.map(() => avgValue);
-    const maxY = Math.max(...values, avgValue, 1);
+    const hasPrev = prevRows.length > 0;
+    const prevTotals = hasPrev ? totalByMonth(prevRows) : {};
+    const prevValues = hasPrev ? MONTHS.map(m=>prevTotals[m.key] || 0) : [];
+    const maxY = Math.max(...values, avgValue, ...(hasPrev ? prevValues : []), 1);
 
     const plot = {x:60, y:16, w:w-80, h:h-70};
     drawGrid(ctx, plot, 4);
@@ -2006,6 +2095,7 @@ function initDashboard(root, storageKey){
 
     const showTotal = chartSerieState.visibility.total !== false;
     const showAvg = chartSerieState.visibility.avg !== false;
+    const showPrev = chartSerieState.visibility.prev !== false && hasPrev;
 
     if (els.tipoSerie.value === "bar"){
       if (showTotal) drawBarSeries(ctx, plot, values, maxY);
@@ -2016,10 +2106,24 @@ function initDashboard(root, storageKey){
         lineWidth: 2,
         dash: [6,4],
       });
+      if (showPrev) drawLineSeries(ctx, plot, prevValues, maxY, {
+        color: "rgba(139,92,246,.9)",
+        pointColor: "rgba(139,92,246,.95)",
+        pointRadius: 2,
+        lineWidth: 2,
+        dash: [3,4],
+      });
     } else {
       if (showTotal) drawLineSeries(ctx, plot, values, maxY, {
         color: "rgba(110,231,255,.90)",
         pointColor: "rgba(110,231,255,.95)",
+      });
+      if (showPrev) drawLineSeries(ctx, plot, prevValues, maxY, {
+        color: "rgba(139,92,246,.9)",
+        pointColor: "rgba(139,92,246,.95)",
+        pointRadius: 3,
+        lineWidth: 2,
+        dash: [3,4],
       });
       if (showAvg) drawLineSeries(ctx, plot, avgSeries, maxY, {
         color: "rgba(249,115,22,.9)",
@@ -2036,6 +2140,9 @@ function initDashboard(root, storageKey){
     const nextPoints = [];
     if (els.tipoSerie.value === "line" && showTotal){
       nextPoints.push(...buildLinePoints(plot, values, maxY, labels, "Total"));
+    }
+    if (showPrev){
+      nextPoints.push(...buildLinePoints(plot, prevValues, maxY, labels, getPrevLabel()));
     }
     if (showAvg){
       nextPoints.push(...buildLinePoints(plot, avgSeries, maxY, labels, "Média"));
@@ -2253,7 +2360,9 @@ function initDashboard(root, storageKey){
     const ano = els.ano.value.trim();
     els.titulo.textContent = muni ? `Dashboard de Receitas — ${muni}` : "Dashboard de Receitas";
     els.subtitulo.textContent = ano ? `Visão gerencial (${ano}) com filtros e análises dinâmicas.` : "Visão gerencial com filtros e análises dinâmicas.";
+    const prevFonte = PREV_DATA.length ? PREV_META.fonte : "—";
     els.statusArquivo.textContent = `Fonte: ${META.fonte || "—"}`;
+    els.statusArquivoAnterior.textContent = `Ano anterior: ${prevFonte || "—"}`;
     els.statusAtualizacao.textContent = `Atualização: ${META.atualizado || "—"}`;
   }
 
@@ -2310,17 +2419,47 @@ function initDashboard(root, storageKey){
     syncFilterOptions();
 
     const { chartRows, tableRows, mesKey } = applyFilters();
-    els.pillStatus.textContent = DATA.length ? `Base carregada • ${DATA.length} linhas` : "Nenhum arquivo carregado";
+    const prevChartRows = getChartRows(PREV_DATA);
+    const prevInfo = PREV_DATA.length ? ` • Ano anterior: ${PREV_DATA.length} linhas` : "";
+    els.pillStatus.textContent = DATA.length ? `Base carregada • ${DATA.length} linhas${prevInfo}` : "Nenhum arquivo carregado";
 
     renderFichaChips();
+    syncPrevLegend();
+    syncSerieLegend();
 
     updateKPIs(chartRows, mesKey);
-    renderSerie(chartRows);
+    renderSerie(chartRows, prevChartRows);
     renderTop(chartRows, mesKey);
     renderBuilder(chartRows, mesKey);
     renderTable(tableRows, mesKey);
 
     saveState();
+  }
+
+  async function loadCsvFile(file){
+    const buf = await file.arrayBuffer();
+    let text = new TextDecoder("utf-8").decode(buf);
+    if ((text.match(/�/g) || []).length > 5){
+      text = new TextDecoder("iso-8859-1").decode(buf);
+    }
+
+    const parsed = parseCSV(text);
+    const {objs} = toObjects(parsed.rows);
+
+    if (!objs.length){
+      throw new Error("CSV sem dados (apenas cabeçalho ou arquivo vazio).");
+    }
+
+    const data = normalizeDataset(objs);
+    if (shouldAbbrevEntidade) applyEntidadeAbbreviations(data);
+
+    return {
+      data,
+      meta: {
+        fonte: `${file.name} • CSV (${parsed.sep === ";" ? "separador ;" : "separador ,"} )`,
+        atualizado: new Date().toLocaleString("pt-BR"),
+      },
+    };
   }
 
   /* ==============================
@@ -2335,27 +2474,21 @@ function initDashboard(root, storageKey){
 
     try{
       els.pillStatus.textContent = "Processando CSV...";
+      const result = await loadCsvFile(file);
+      DATA = result.data;
+      META = result.meta;
 
-      const buf = await file.arrayBuffer();
-
-      // tenta utf-8 e fallback latin1
-      let text = new TextDecoder("utf-8").decode(buf);
-      if ((text.match(/�/g) || []).length > 5){
-        text = new TextDecoder("iso-8859-1").decode(buf);
+      const prevFile = els.fileInputPrev.files?.[0];
+      if (prevFile){
+        const prevResult = await loadCsvFile(prevFile);
+        PREV_DATA = prevResult.data;
+        PREV_META = prevResult.meta;
+        chartSerieState.visibility.prev = true;
+      } else {
+        PREV_DATA = [];
+        PREV_META = { fonte:"—", atualizado:"—" };
+        chartSerieState.visibility.prev = false;
       }
-
-      const parsed = parseCSV(text);
-      const {header, objs} = toObjects(parsed.rows);
-
-      if (!objs.length){
-        throw new Error("CSV sem dados (apenas cabeçalho ou arquivo vazio).");
-      }
-
-      DATA = normalizeDataset(objs);
-      if (shouldAbbrevEntidade) applyEntidadeAbbreviations(DATA);
-
-      META.fonte = `${file.name} • CSV (${parsed.sep === ";" ? "separador ;" : "separador ,"} )`;
-      META.atualizado = new Date().toLocaleString("pt-BR");
 
       updateUI();
     }catch(err){
@@ -2369,16 +2502,19 @@ function initDashboard(root, storageKey){
     if (!confirm("Tem certeza que deseja limpar os dados salvos?")) return;
     DATA = [];
     META = { fonte:"—", atualizado:"—" };
+    PREV_DATA = [];
+    PREV_META = { fonte:"—", atualizado:"—" };
     SELECTED_FICHAS.clear();
     SELECTED_ENTIDADES.clear();
     SELECTED_FONTES.clear();
     localStorage.removeItem(storageKey);
     els.fileInput.value = "";
+    els.fileInputPrev.value = "";
     updateUI();
   });
 
   [
-    els.municipio, els.ano, els.mesFoco, els.dimensao, els.tipoSerie,
+    els.municipio, els.ano, els.anoAnterior, els.mesFoco, els.dimensao, els.tipoSerie,
     els.quickSearch, els.tableSearch, els.bTipo, els.bMetrica, els.bEixo, els.bAgrupar
   ].forEach(el => el.addEventListener("input", updateUI));
 
