@@ -1324,6 +1324,9 @@ function normalizeFonteRecursoValue(value){
   const trimmed = (value ?? "").toString().trim();
   if (!trimmed) return "";
 
+  const dotMatch = trimmed.match(/(\d\.\d{3})/);
+  if (dotMatch) return dotMatch[1];
+
   const compact = trimmed.replace(/\s+/g, "");
   if (/^\d\.\d{3}$/.test(compact)) return compact;
   if (/^\d{4}$/.test(compact)) return `${compact[0]}.${compact.slice(1)}`;
@@ -1626,7 +1629,12 @@ function initDashboard(root, storageKey){
       out = out.filter(r => SELECTED_ENTIDADES.has((r.entidade || "").toString().trim()));
     }
     if (SELECTED_FONTES.size){
-      out = out.filter(r => SELECTED_FONTES.has((r.fonteRecurso || "").toString().trim()));
+      const normalizedSelected = new Set(
+        Array.from(SELECTED_FONTES)
+          .map(value => normalizeFonteRecursoValue(value))
+          .filter(Boolean)
+      );
+      out = out.filter(r => normalizedSelected.has(normalizeFonteRecursoValue(r.fonteRecurso)));
     }
     return out;
   }
