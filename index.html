@@ -1558,11 +1558,28 @@ function initDashboard(root, storageKey){
     return Array.from(set).sort((a,b)=>a.localeCompare(b, "pt-BR", {numeric:true, sensitivity:"base"}));
   }
 
+  function formatFonteRecursoLabel(value){
+    const trimmed = (value ?? "").toString().trim();
+    if (!trimmed) return value;
+
+    let formatted = trimmed.replace(/\s+/g, "");
+    if (/^\d{4}$/.test(formatted)){
+      formatted = `${formatted[0]}.${formatted.slice(1)}`;
+    }
+    if (!/^\d{1}\.\d{3}$/.test(formatted)){
+      return trimmed;
+    }
+
+    const isRecursoProprio = formatted === "1.500" || formatted === "1.501";
+    const tipo = isRecursoProprio ? "Recurso Próprio" : "Recurso Vinculado";
+    return `${formatted} (${tipo})`;
+  }
+
   function getSelectedValues(selectEl){
     return Array.from(selectEl.selectedOptions || []).map(opt => opt.value).filter(Boolean);
   }
 
-  function syncMultiSelect(selectEl, values, selectedSet, emptyLabel){
+  function syncMultiSelect(selectEl, values, selectedSet, emptyLabel, displayFormatter){
     const allowed = new Set(values);
     const nextSelected = new Set(Array.from(selectedSet).filter(v => allowed.has(v)));
     selectEl.innerHTML = "";
@@ -1581,7 +1598,7 @@ function initDashboard(root, storageKey){
     for (const v of values){
       const opt = document.createElement("option");
       opt.value = v;
-      opt.textContent = v;
+      opt.textContent = displayFormatter ? displayFormatter(v) : v;
       if (nextSelected.has(v)) opt.selected = true;
       selectEl.appendChild(opt);
     }
@@ -1594,7 +1611,13 @@ function initDashboard(root, storageKey){
     const entidades = collectUniqueValues(DATA, "entidade");
     const fontes = collectUniqueValues(DATA, "fonteRecurso");
     syncMultiSelect(els.entidadeFilter, entidades, SELECTED_ENTIDADES, "Sem entidades");
-    syncMultiSelect(els.fonteFilter, fontes, SELECTED_FONTES, "Sem fontes");
+    syncMultiSelect(
+      els.fonteFilter,
+      fontes,
+      SELECTED_FONTES,
+      "Sem fontes",
+      shouldAbbrevEntidade ? formatFonteRecursoLabel : null
+    );
   }
 
   function refreshMultiSelections(){
