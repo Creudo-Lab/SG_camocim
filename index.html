@@ -1081,6 +1081,16 @@ function matchesTableQuery(row, q){
   return row._search.includes(q);
 }
 
+function buildSearchIndex(row){
+  return normalizeText([
+    row.ficha,
+    row.natureza,
+    row.nome,
+    row.entidade,
+    row.fonteRecurso,
+  ].join(" "));
+}
+
 function parseBRNumber(v){
   if (v === null || v === undefined) return 0;
   if (typeof v === "number") return isFinite(v) ? v : 0;
@@ -1256,10 +1266,37 @@ function normalizeDataset(raw){
 
     out.push({
       ficha, natureza, nome, orcado, values, entidade, fonteRecurso,
-      _search: normalizeText([ficha, natureza, nome, entidade, fonteRecurso].join(" ")),
+      _search: buildSearchIndex({ ficha, natureza, nome, entidade, fonteRecurso }),
     });
   }
   return out;
+}
+
+function abbreviateEntidade(entidade){
+  const normalized = normalizeText(entidade);
+  if (!normalized) return entidade;
+
+  if (normalized.includes("acao social")){
+    return "FMAS";
+  }
+  if (normalized.includes("saude")){
+    return "FMS";
+  }
+  if (normalized.includes("prefeitura")){
+    return "PM";
+  }
+  return entidade;
+}
+
+function applyEntidadeAbbreviations(rows){
+  for (const row of rows){
+    const original = row.entidade || "";
+    const abbreviated = abbreviateEntidade(original);
+    if (abbreviated !== original){
+      row.entidade = abbreviated;
+    }
+    row._search = buildSearchIndex(row);
+  }
 }
 
 /* ==============================
@@ -1272,6 +1309,7 @@ function initDashboard(root, storageKey){
   let SELECTED_ENTIDADES = new Set();
   let SELECTED_FONTES = new Set();
   const SORT_STATE = { key: null, dir: "asc" };
+  const shouldAbbrevEntidade = root.dataset.tab === "1";
 
   const els = {
     municipio: root.querySelector("#municipio"),
@@ -1384,6 +1422,7 @@ function initDashboard(root, storageKey){
       try{
         const obj = JSON.parse(saved);
         DATA = obj.data || [];
+        if (shouldAbbrevEntidade) applyEntidadeAbbreviations(DATA);
         META = obj.meta || META;
         SELECTED_FICHAS = new Set(obj.selectedFichas || []);
         SELECTED_ENTIDADES = new Set(obj.selectedEntidades || []);
@@ -2290,6 +2329,7 @@ function initDashboard(root, storageKey){
       }
 
       DATA = normalizeDataset(objs);
+      if (shouldAbbrevEntidade) applyEntidadeAbbreviations(DATA);
 
       META.fonte = `${file.name} • CSV (${parsed.sep === ";" ? "separador ;" : "separador ,"} )`;
       META.atualizado = new Date().toLocaleString("pt-BR");
