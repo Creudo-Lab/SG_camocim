@@ -399,6 +399,22 @@
       outline:none;
       font-size:13px;
     }
+    .tabPanel[data-tab="1"] select option{
+      background-color: #111a33;
+      color: var(--text);
+    }
+    .tabPanel[data-tab="1"] select option:checked{
+      background-color: rgba(110,231,255,.35);
+      color: #eef6ff;
+    }
+    .tabPanel[data-tab="1"] select option:hover,
+    .tabPanel[data-tab="1"] select option:focus{
+      background-color: rgba(139,92,246,.35);
+      color: #f5f7ff;
+    }
+    .tabPanel[data-tab="1"] select option:disabled{
+      color: rgba(233,238,252,.55);
+    }
 
     .tableWrap{ margin: 0 6px; }
     table{ width:100%; border-collapse: collapse; font-size:12px; }
