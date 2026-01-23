@@ -2510,6 +2510,7 @@ function initDashboard(root, storageKey){
 
 const tabPanels = Array.from(document.querySelectorAll(".tabPanel"));
 tabPanels.forEach((panel, index) => {
+  if (panel.dataset.tab !== "1") return;
   initDashboard(panel, `receitas_dashboard_offline_v2_tab${index + 1}`);
 });
 
