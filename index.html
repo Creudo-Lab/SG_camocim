@@ -843,7 +843,7 @@
         <div class="sub" id="subtitulo">Faça upload do arquivo para iniciar.</div>
       </div>
       <div class="topbarActions">
-        <button class="themeToggle" id="themeToggle" type="button" aria-pressed="false">Tema: Escuro</button>
+        <button class="themeToggle" type="button" aria-pressed="false">Tema: Escuro</button>
         <div class="status">
           <div id="statusArquivo">Fonte: —</div>
           <div id="statusArquivoAnterior">Ano anterior: —</div>
@@ -1017,7 +1017,17 @@
 </div>
   </div>
   <div class="tabPanel" role="tabpanel" data-tab="2">
-    <div class="blankExpense" aria-label="Aba de despesas em branco"></div>
+    <div class="blankExpense" aria-label="Aba de despesas em branco">
+      <div class="topbar">
+        <div class="titleBlock">
+          <h2>Dashboard de Despesas</h2>
+          <div class="sub">Em construção.</div>
+        </div>
+        <div class="topbarActions">
+          <button class="themeToggle" type="button" aria-pressed="false">Tema: Escuro</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2701,16 +2711,18 @@ tabPanels.forEach((panel, index) => {
   initDashboard(panel, `receitas_dashboard_offline_v2_tab${index + 1}`);
 });
 
-const themeToggle = document.getElementById("themeToggle");
+const themeToggles = document.querySelectorAll(".themeToggle");
 const themeMeta = document.querySelector('meta[name="theme-color"]');
 const THEME_KEY = "dashboard-theme";
 
 function applyTheme(theme){
   const isLight = theme === "light";
   document.body.dataset.theme = isLight ? "light" : "dark";
-  if (themeToggle){
-    themeToggle.textContent = isLight ? "Tema: Claro" : "Tema: Escuro";
-    themeToggle.setAttribute("aria-pressed", isLight ? "true" : "false");
+  if (themeToggles.length){
+    themeToggles.forEach((toggle) => {
+      toggle.textContent = isLight ? "Tema: Claro" : "Tema: Escuro";
+      toggle.setAttribute("aria-pressed", isLight ? "true" : "false");
+    });
   }
   if (themeMeta){
     themeMeta.setAttribute("content", isLight ? "#f8fafc" : "#0b1020");
@@ -2720,11 +2732,13 @@ function applyTheme(theme){
 const storedTheme = localStorage.getItem(THEME_KEY);
 applyTheme(storedTheme === "light" ? "light" : "dark");
 
-if (themeToggle){
-  themeToggle.addEventListener("click", () => {
-    const nextTheme = document.body.dataset.theme === "light" ? "dark" : "light";
-    localStorage.setItem(THEME_KEY, nextTheme);
-    applyTheme(nextTheme);
+if (themeToggles.length){
+  themeToggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      const nextTheme = document.body.dataset.theme === "light" ? "dark" : "light";
+      localStorage.setItem(THEME_KEY, nextTheme);
+      applyTheme(nextTheme);
+    });
   });
 }
 
