@@ -30,6 +30,9 @@
       --bad:#ef4444;
       --shadow: 0 14px 40px rgba(0,0,0,.35);
       --radius: 18px;
+      --page-bg: radial-gradient(1200px 800px at 20% 0%, rgba(110,231,255,.10), transparent 60%),
+                  radial-gradient(1200px 800px at 90% 20%, rgba(139,92,246,.12), transparent 55%),
+                  linear-gradient(180deg, var(--bg), #060a15);
     }
 
     *{ box-sizing:border-box; }
@@ -37,9 +40,7 @@
     body{
       margin:0;
       font-family: system-ui, Segoe UI, Arial, sans-serif;
-      background: radial-gradient(1200px 800px at 20% 0%, rgba(110,231,255,.10), transparent 60%),
-                  radial-gradient(1200px 800px at 90% 20%, rgba(139,92,246,.12), transparent 55%),
-                  linear-gradient(180deg, var(--bg), #060a15);
+      background: var(--page-bg);
       color:var(--text);
     }
 
@@ -86,6 +87,17 @@
     }
     .blankExpense{
       min-height:100vh;
+    }
+    .blankExpenseHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:18px;
+    }
+    .blankExpenseTitle{
+      font-size:18px;
+      margin:0;
     }
 
     .sidebar{
@@ -258,9 +270,30 @@
       gap:16px;
       padding:8px 6px 14px;
     }
+    .topbarActions{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:10px;
+    }
     .titleBlock h2{ margin:0; font-size:18px; }
     .titleBlock .sub{ margin:6px 0 0; color:var(--muted); font-size:12px; }
     .status{ text-align:right; color:var(--muted); font-size:12px; }
+    .themeToggle{
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding:6px 14px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:600;
+      cursor:pointer;
+      transition: background .2s ease, border-color .2s ease;
+    }
+    .themeToggle:hover{
+      background: rgba(110,231,255,.18);
+      border-color: rgba(110,231,255,.45);
+    }
 
     .gridKpis{
       display:grid;
@@ -515,6 +548,168 @@
       font-size:12px;
     }
 
+    body[data-theme="light"]{
+      --bg:#f8fafc;
+      --panel:#ffffff;
+      --panel2:#f1f5f9;
+      --muted:#475569;
+      --text:#0f172a;
+      --line: rgba(15,23,42,.18);
+      --accent:#0ea5e9;
+      --accent2:#6366f1;
+      --avg:#ea580c;
+      --good:#16a34a;
+      --warn:#f59e0b;
+      --bad:#dc2626;
+      --shadow: 0 14px 32px rgba(15,23,42,.12);
+      --page-bg: radial-gradient(1200px 800px at 20% 0%, rgba(14,165,233,.14), transparent 60%),
+                  radial-gradient(1200px 800px at 90% 20%, rgba(99,102,241,.12), transparent 55%),
+                  linear-gradient(180deg, #f8fafc, #eef2f7);
+    }
+    body[data-theme="light"] .tabBar{
+      background: rgba(255,255,255,.92);
+    }
+    body[data-theme="light"] .tabBtn{
+      border-color: rgba(15,23,42,.2);
+      background: rgba(15,23,42,.05);
+      color: var(--text);
+    }
+    body[data-theme="light"] .tabBtn.active{
+      color: #0f172a;
+      box-shadow: 0 8px 18px rgba(15,23,42,.15);
+    }
+    body[data-theme="light"] .sidebar{
+      background: linear-gradient(180deg, rgba(15,23,42,.05), transparent 40%),
+                  linear-gradient(180deg, var(--panel), var(--panel2));
+    }
+    body[data-theme="light"] .logo{
+      background-color: rgba(15,23,42,.06);
+      border-color: rgba(15,23,42,.18);
+      box-shadow: 0 8px 18px rgba(15,23,42,.15);
+    }
+    body[data-theme="light"] .sectionTitle{
+      color: rgba(15,23,42,.7);
+    }
+    body[data-theme="light"] .ctrl{
+      background: rgba(15,23,42,.03);
+      border-color: rgba(15,23,42,.15);
+    }
+    body[data-theme="light"] .ctrl label{
+      color: rgba(15,23,42,.8);
+    }
+    body[data-theme="light"] .ctrl input[type="text"],
+    body[data-theme="light"] .ctrl select{
+      background: rgba(255,255,255,.95);
+      border-color: rgba(15,23,42,.2);
+      color: var(--text);
+    }
+    body[data-theme="light"] .ctrl input[type="file"]{
+      color: rgba(15,23,42,.8);
+    }
+    body[data-theme="light"] .btn.secondary{
+      background: rgba(15,23,42,.06);
+      border-color: rgba(15,23,42,.2);
+      color: var(--text);
+    }
+    body[data-theme="light"] .sortBtn{
+      background: rgba(15,23,42,.08);
+      border-color: rgba(15,23,42,.2);
+      color: var(--text);
+    }
+    body[data-theme="light"] .chip,
+    body[data-theme="light"] .pill{
+      background: rgba(15,23,42,.06);
+      border-color: rgba(15,23,42,.18);
+      color: rgba(15,23,42,.85);
+    }
+    body[data-theme="light"] .chip button{
+      color: rgba(15,23,42,.6);
+    }
+    body[data-theme="light"] .kpi{
+      background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(15,23,42,.03));
+      border-color: rgba(15,23,42,.15);
+    }
+    body[data-theme="light"] .kpi .label{
+      color: rgba(15,23,42,.75);
+    }
+    body[data-theme="light"] .panel{
+      background: rgba(255,255,255,.96);
+      border-color: rgba(15,23,42,.15);
+    }
+    body[data-theme="light"] .chartLegend{
+      background: rgba(15,23,42,.04);
+      border-color: rgba(15,23,42,.12);
+    }
+    body[data-theme="light"] .legendItem{
+      color: rgba(15,23,42,.8);
+    }
+    body[data-theme="light"] .legendItem.is-off{
+      color: rgba(15,23,42,.45);
+    }
+    body[data-theme="light"] .chartTooltip{
+      background: rgba(255,255,255,.98);
+      border-color: rgba(15,23,42,.2);
+      color: var(--text);
+      box-shadow: 0 8px 20px rgba(15,23,42,.15);
+    }
+    body[data-theme="light"] .builder .bctrl{
+      background: rgba(255,255,255,.9);
+      border-color: rgba(15,23,42,.15);
+    }
+    body[data-theme="light"] .builder label{
+      color: rgba(15,23,42,.7);
+    }
+    body[data-theme="light"] .builder select{
+      background: rgba(255,255,255,.95);
+      border-color: rgba(15,23,42,.2);
+      color: var(--text);
+    }
+    body[data-theme="light"] .tabPanel[data-tab="1"] select option{
+      background-color: #f1f5f9;
+      color: #0f172a;
+    }
+    body[data-theme="light"] .tabPanel[data-tab="1"] select option:checked{
+      background-color: rgba(14,165,233,.25);
+      color: #0f172a;
+    }
+    body[data-theme="light"] .tabPanel[data-tab="1"] select option:hover,
+    body[data-theme="light"] .tabPanel[data-tab="1"] select option:focus{
+      background-color: rgba(99,102,241,.2);
+      color: #0f172a;
+    }
+    body[data-theme="light"] thead th{
+      background: rgba(248,250,252,.98);
+      color: rgba(15,23,42,.9);
+    }
+    body[data-theme="light"] tbody td{
+      color: rgba(15,23,42,.9);
+      border-bottom:1px solid rgba(15,23,42,.1);
+    }
+    body[data-theme="light"] tbody tr:hover{
+      background: rgba(15,23,42,.04);
+    }
+    body[data-theme="light"] .searchRow input{
+      background: rgba(255,255,255,.95);
+      border-color: rgba(15,23,42,.2);
+      color: var(--text);
+    }
+    body[data-theme="light"] .selectAllBox{
+      background: rgba(255,255,255,.95);
+      border-color: rgba(15,23,42,.2);
+      color: rgba(15,23,42,.85);
+    }
+    body[data-theme="light"] .chartCanvas{
+      background: rgba(255,255,255,.96);
+      border-color: rgba(15,23,42,.12);
+    }
+    body[data-theme="light"] .errorBox{
+      color: rgba(15,23,42,.9);
+    }
+    body[data-theme="light"] .themeToggle{
+      background: rgba(15,23,42,.06);
+      border-color: rgba(15,23,42,.2);
+    }
+
     @media (max-width: 1280px){
       .gridKpis{ grid-template-columns: repeat(3, minmax(180px, 1fr)); }
       .gridCharts{ grid-template-columns: 1fr; }
@@ -658,10 +853,13 @@
         <h2 id="titulo">Dashboard de Receitas</h2>
         <div class="sub" id="subtitulo">Faça upload do arquivo para iniciar.</div>
       </div>
-      <div class="status">
-        <div id="statusArquivo">Fonte: —</div>
-        <div id="statusArquivoAnterior">Ano anterior: —</div>
-        <div id="statusAtualizacao">Atualização: —</div>
+      <div class="topbarActions">
+        <button class="themeToggle" type="button" aria-pressed="false">Tema: Escuro</button>
+        <div class="status">
+          <div id="statusArquivo">Fonte: —</div>
+          <div id="statusArquivoAnterior">Ano anterior: —</div>
+          <div id="statusAtualizacao">Atualização: —</div>
+        </div>
       </div>
     </div>
 
@@ -830,7 +1028,12 @@
 </div>
   </div>
   <div class="tabPanel" role="tabpanel" data-tab="2">
-    <div class="blankExpense" aria-label="Aba de despesas em branco"></div>
+    <div class="blankExpense" aria-label="Aba de despesas em branco">
+      <div class="blankExpenseHeader">
+        <h2 class="blankExpenseTitle">Dashboard de Despesas</h2>
+        <button class="themeToggle" type="button" aria-pressed="false">Tema: Escuro</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2512,6 +2715,33 @@ const tabPanels = Array.from(document.querySelectorAll(".tabPanel"));
 tabPanels.forEach((panel, index) => {
   if (panel.dataset.tab !== "1") return;
   initDashboard(panel, `receitas_dashboard_offline_v2_tab${index + 1}`);
+});
+
+const themeToggles = Array.from(document.querySelectorAll(".themeToggle"));
+const themeMeta = document.querySelector('meta[name="theme-color"]');
+const THEME_KEY = "dashboard-theme";
+
+function applyTheme(theme){
+  const isLight = theme === "light";
+  document.body.dataset.theme = isLight ? "light" : "dark";
+  themeToggles.forEach(toggle => {
+    toggle.textContent = isLight ? "Tema: Claro" : "Tema: Escuro";
+    toggle.setAttribute("aria-pressed", isLight ? "true" : "false");
+  });
+  if (themeMeta){
+    themeMeta.setAttribute("content", isLight ? "#f8fafc" : "#0b1020");
+  }
+}
+
+const storedTheme = localStorage.getItem(THEME_KEY);
+applyTheme(storedTheme === "light" ? "light" : "dark");
+
+themeToggles.forEach(toggle => {
+  toggle.addEventListener("click", () => {
+    const nextTheme = document.body.dataset.theme === "light" ? "dark" : "light";
+    localStorage.setItem(THEME_KEY, nextTheme);
+    applyTheme(nextTheme);
+  });
 });
 
 const tabButtons = Array.from(document.querySelectorAll(".tabBtn"));
