@@ -770,6 +770,30 @@
       border-radius:999px;
       display:inline-block;
     }
+    .uploadCompact{
+      display:grid;
+      gap:8px;
+    }
+    .uploadItem{
+      padding:6px 8px;
+      border-radius:12px;
+      border:1px dashed rgba(255,255,255,.16);
+      background: rgba(255,255,255,.02);
+    }
+    .uploadLabel{
+      display:block;
+      font-size:11px;
+      color:rgba(233,238,252,.8);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      margin-bottom:4px;
+      font-weight:600;
+    }
+    .hint.compact{
+      margin-top:4px;
+      font-size:11px;
+      color:rgba(233,238,252,.7);
+    }
 
     @media (max-width: 1280px){
       .gridKpis{ grid-template-columns: repeat(3, minmax(180px, 1fr)); }
@@ -808,25 +832,29 @@
     </div>
 
     <div class="ctrl">
-      <label>Upload do arquivo (CSV)</label>
-      <input id="fileInput" type="file" accept=".csv,.txt" />
-      <div class="hint">
-        Use CSV do Excel (geralmente separado por <b>;</b>).
-        Cabeçalho esperado: ficha | natureza | nome | orçado | janeiro..dezembro (opcional: entidade, fonte de recurso)
-      </div>
-    </div>
-    <div class="ctrl">
-      <label>Upload do arquivo do ano anterior (CSV)</label>
-      <input id="fileInputPrev" type="file" accept=".csv,.txt" />
-      <div class="hint">
-        Opcional. Use o mesmo layout do arquivo principal para comparar os dois anos.
-      </div>
-    </div>
-    <div class="ctrl">
-      <label>Upload do arquivo do ano anterior (CSV)</label>
-      <input id="fileInputPrev" type="file" accept=".csv,.txt" />
-      <div class="hint">
-        Opcional. Use o mesmo layout do arquivo principal para comparar os dois anos.
+      <label>Uploads (CSV)</label>
+      <div class="uploadCompact">
+        <div class="uploadItem">
+          <span class="uploadLabel">Arquivo principal</span>
+          <input id="fileInput" type="file" accept=".csv,.txt" />
+          <div class="hint compact">
+            Use CSV do Excel (geralmente separado por <b>;</b>). Cabeçalho esperado: ficha | natureza | nome | orçado | janeiro..dezembro (opcional: entidade, fonte de recurso)
+          </div>
+        </div>
+        <div class="uploadItem">
+          <span class="uploadLabel">Ano anterior 1</span>
+          <input id="fileInputPrev" type="file" accept=".csv,.txt" />
+          <div class="hint compact">
+            Opcional. Use o mesmo layout do arquivo principal para comparar os dois anos.
+          </div>
+        </div>
+        <div class="uploadItem">
+          <span class="uploadLabel">Ano anterior 2</span>
+          <input id="fileInputPrev2" type="file" accept=".csv,.txt" />
+          <div class="hint compact">
+            Opcional. Use o mesmo layout do arquivo principal para comparar três anos.
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1461,6 +1489,7 @@ function initDashboard(root, storageKey){
     anoAnterior: root.querySelector("#anoAnterior"),
     fileInput: root.querySelector("#fileInput"),
     fileInputPrev: root.querySelector("#fileInputPrev"),
+    fileInputPrev2: root.querySelector("#fileInputPrev2"),
     btnProcessar: root.querySelector("#btnProcessar"),
     btnLimpar: root.querySelector("#btnLimpar"),
     mesFoco: root.querySelector("#mesFoco"),
@@ -2739,6 +2768,7 @@ function initDashboard(root, storageKey){
     localStorage.removeItem(storageKey);
     els.fileInput.value = "";
     els.fileInputPrev.value = "";
+    if (els.fileInputPrev2) els.fileInputPrev2.value = "";
     updateUI();
   });
 
