@@ -184,6 +184,16 @@
       color:rgba(233,238,252,.85);
       font-size:12px;
     }
+    .uploadNote{
+      margin-top:6px;
+      font-size:11px;
+      color:rgba(233,238,252,.6);
+      line-height:1.4;
+    }
+    .subtleUpload{
+      background: rgba(255,255,255,.02);
+      border-color: rgba(255,255,255,.08);
+    }
     .row{ display:flex; gap:10px; }
     .row > * { flex:1; }
 
@@ -1067,6 +1077,14 @@
             <button class="expenseMenuBtn active" type="button" aria-current="page">Por Elemento</button>
             <button class="expenseMenuBtn" type="button">Por Grupo</button>
           </nav>
+        </div>
+        <div>
+          <div class="sectionTitle">Upload</div>
+          <div class="ctrl subtleUpload">
+            <label for="expenseUpload">Despesas (ano atual e até 3 anteriores)</label>
+            <input id="expenseUpload" type="file" accept=".xlsx,.xls,.csv" multiple />
+            <div class="uploadNote">Envie planilhas do ano atual e dos últimos 3 anos para consolidar as despesas.</div>
+          </div>
         </div>
       </aside>
       <main class="main">
