@@ -2955,7 +2955,7 @@ function initExpenses(panel){
       return XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
     }
     const text = await file.text();
-    return parseCSV(text);
+    return parseCSV(text).rows;
   }
 
   function buildSeries(rows){
