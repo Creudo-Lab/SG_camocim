@@ -99,6 +99,33 @@
       height:100vh;
       overflow:auto;
     }
+    .expenseSidebar{
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+    .expenseMenu{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      margin:6px 4px 0;
+    }
+    .expenseMenuBtn{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding:10px 14px;
+      border-radius: 14px;
+      font-weight:700;
+      text-align:left;
+      cursor:pointer;
+      transition: background .2s ease, border-color .2s ease;
+    }
+    .expenseMenuBtn.active{
+      background: linear-gradient(135deg, rgba(110,231,255,.25), rgba(139,92,246,.22));
+      border-color: rgba(110,231,255,.5);
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
 
     .brand{
       display:flex;
@@ -698,6 +725,14 @@
       background: rgba(15,23,42,.06);
       border-color: rgba(15,23,42,.2);
     }
+    body[data-theme="light"] .expenseMenuBtn{
+      background: rgba(15,23,42,.06);
+      border-color: rgba(15,23,42,.2);
+      color: var(--text);
+    }
+    body[data-theme="light"] .expenseMenuBtn.active{
+      box-shadow: 0 8px 18px rgba(15,23,42,.15);
+    }
 
     @media (max-width: 1280px){
       .gridKpis{ grid-template-columns: repeat(3, minmax(180px, 1fr)); }
@@ -1017,16 +1052,33 @@
 </div>
   </div>
   <div class="tabPanel" role="tabpanel" data-tab="2">
-    <div class="blankExpense" aria-label="Aba de despesas em branco">
-      <div class="topbar">
-        <div class="titleBlock">
-          <h2>Dashboard de Despesas</h2>
-          <div class="sub">Em construção.</div>
+    <div class="app blankExpense" aria-label="Aba de despesas em branco">
+      <aside class="sidebar expenseSidebar">
+        <div class="brand">
+          <div class="logo"></div>
+          <div>
+            <h1>Despesas Municipais</h1>
+            <p>Dashboard Gerencial</p>
+          </div>
         </div>
-        <div class="topbarActions">
-          <button class="themeToggle" type="button" aria-pressed="false">Tema: Escuro</button>
+        <div>
+          <div class="sectionTitle">Menu</div>
+          <nav class="expenseMenu" aria-label="Menu de despesas">
+            <button class="expenseMenuBtn active" type="button" aria-current="page">Por Elemento</button>
+          </nav>
         </div>
-      </div>
+      </aside>
+      <main class="main">
+        <div class="topbar">
+          <div class="titleBlock">
+            <h2>Dashboard de Despesas</h2>
+            <div class="sub">Em construção.</div>
+          </div>
+          <div class="topbarActions">
+            <button class="themeToggle" type="button" aria-pressed="false">Tema: Escuro</button>
+          </div>
+        </div>
+      </main>
     </div>
   </div>
 </div>
