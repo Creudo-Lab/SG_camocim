@@ -733,6 +733,43 @@
     body[data-theme="light"] .expenseMenuBtn.active{
       box-shadow: 0 8px 18px rgba(15,23,42,.15);
     }
+    .expenseUpload{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin:6px 4px 0;
+    }
+    .expenseUpload .ctrl{
+      margin-bottom:0;
+    }
+    .expenseUpload .row{
+      align-items:center;
+    }
+    .expenseUpload .row input[type="text"]{
+      flex:1;
+    }
+    .expenseLegend{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      font-size:12px;
+      color:rgba(233,238,252,.8);
+    }
+    .expenseLegendItem{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      padding:4px 8px;
+      border-radius:999px;
+      background: rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.12);
+    }
+    .expenseLegendSwatch{
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      display:inline-block;
+    }
 
     @media (max-width: 1280px){
       .gridKpis{ grid-template-columns: repeat(3, minmax(180px, 1fr)); }
@@ -1061,6 +1098,38 @@
             <p>Dashboard Gerencial</p>
           </div>
         </div>
+        <div class="sectionTitle">Upload despesas (até 3 anos)</div>
+        <div class="expenseUpload" aria-label="Upload de arquivos de despesas">
+          <div class="ctrl">
+            <label>Arquivo 1 (Excel ou CSV)</label>
+            <input id="expenseFile1" type="file" accept=".csv,.xlsx,.xls" />
+            <div class="row" style="margin-top:8px;">
+              <label style="margin:0; min-width:90px;">Ano (opcional)</label>
+              <input id="expenseYear1" type="text" placeholder="Ex.: 2025" />
+            </div>
+          </div>
+          <div class="ctrl">
+            <label>Arquivo 2 (Excel ou CSV)</label>
+            <input id="expenseFile2" type="file" accept=".csv,.xlsx,.xls" />
+            <div class="row" style="margin-top:8px;">
+              <label style="margin:0; min-width:90px;">Ano (opcional)</label>
+              <input id="expenseYear2" type="text" placeholder="Ex.: 2024" />
+            </div>
+          </div>
+          <div class="ctrl">
+            <label>Arquivo 3 (Excel ou CSV)</label>
+            <input id="expenseFile3" type="file" accept=".csv,.xlsx,.xls" />
+            <div class="row" style="margin-top:8px;">
+              <label style="margin:0; min-width:90px;">Ano (opcional)</label>
+              <input id="expenseYear3" type="text" placeholder="Ex.: 2023" />
+            </div>
+            <div class="hint" style="margin:8px 0 0;">
+              Formato esperado: EMPENHO | DATA | VALOR | NATUREZA DA DESPESA | ORGÃO | FUNÇÃO | SUBFUNÇÃO | FONTE_STN | VALOR PAGO
+            </div>
+          </div>
+          <button class="btn" id="expenseLoadBtn" type="button">Carregar dados</button>
+          <div class="pill" id="expenseStatus">Nenhum arquivo carregado</div>
+        </div>
         <div>
           <div class="sectionTitle">Menu</div>
           <nav class="expenseMenu" aria-label="Menu de despesas">
@@ -1079,12 +1148,22 @@
             <button class="themeToggle" type="button" aria-pressed="false">Tema: Escuro</button>
           </div>
         </div>
+        <div class="errorBox" id="expenseError"></div>
+        <section class="panel" style="margin:0 6px 14px;">
+          <div class="panelHeader">
+            <h3>Despesas por mês (linhas simples)</h3>
+            <div class="expenseLegend" id="expenseLegend"></div>
+          </div>
+          <div class="panelBody">
+            <div id="expenseChart" style="height:360px;"></div>
+          </div>
+        </section>
       </main>
     </div>
   </div>
 </div>
 
-
+<script src="./xlsx.full.min.js"></script>
 <script>
 /* ==============================
    Meses + utilitários
@@ -2762,6 +2841,278 @@ const tabPanels = Array.from(document.querySelectorAll(".tabPanel"));
 tabPanels.forEach((panel, index) => {
   if (panel.dataset.tab !== "1") return;
   initDashboard(panel, `receitas_dashboard_offline_v2_tab${index + 1}`);
+});
+
+function initExpenses(panel){
+  const els = {
+    file1: panel.querySelector("#expenseFile1"),
+    file2: panel.querySelector("#expenseFile2"),
+    file3: panel.querySelector("#expenseFile3"),
+    year1: panel.querySelector("#expenseYear1"),
+    year2: panel.querySelector("#expenseYear2"),
+    year3: panel.querySelector("#expenseYear3"),
+    loadBtn: panel.querySelector("#expenseLoadBtn"),
+    status: panel.querySelector("#expenseStatus"),
+    error: panel.querySelector("#expenseError"),
+    chart: panel.querySelector("#expenseChart"),
+    legend: panel.querySelector("#expenseLegend"),
+  };
+  if (!els.loadBtn) return;
+
+  const COLORS = ["#6ee7ff", "#f97316", "#8b5cf6"];
+  let expenseSeries = [];
+
+  function showError(msg){
+    els.error.style.display = msg ? "block" : "none";
+    els.error.textContent = msg || "";
+  }
+
+  function mountExpenseCanvas(){
+    if (!els.chart) return;
+    els.chart.innerHTML = "";
+    const c = document.createElement("canvas");
+    c.className = "chartCanvas";
+    c.dataset.role = "chart";
+    els.chart.appendChild(c);
+  }
+
+  function getExpenseCanvas(){
+    return els.chart?.querySelector("canvas[data-role='chart']");
+  }
+
+  function fitExpenseCanvas(canvas){
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(300, Math.floor(rect.width));
+    const h = Math.max(220, Math.floor(rect.height));
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return {ctx, w, h};
+  }
+
+  function parseExpenseDate(value){
+    if (!value) return null;
+    if (value instanceof Date && !isNaN(value)){
+      return value;
+    }
+    if (typeof value === "number" && window.XLSX?.SSF?.parse_date_code){
+      const date = XLSX.SSF.parse_date_code(value);
+      if (date && date.y && date.m && date.d){
+        return new Date(date.y, date.m - 1, date.d);
+      }
+    }
+    const str = value.toString().trim();
+    if (!str) return null;
+    const brMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (brMatch){
+      return new Date(Number(brMatch[3]), Number(brMatch[2]) - 1, Number(brMatch[1]));
+    }
+    const isoMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (isoMatch){
+      return new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
+    }
+    return null;
+  }
+
+  function normalizeHeader(header){
+    return normalizeText(header).replace(/\s+/g, " ");
+  }
+
+  function mapExpenseRows(rows, forcedYear){
+    if (!rows.length) return [];
+    const header = rows[0].map((cell) => normalizeHeader(cell || ""));
+    const findIndex = (options) => header.findIndex((h) => options.includes(h));
+    const idxDate = findIndex(["data"]);
+    const idxValorPago = findIndex(["valor pago", "valorpago", "valor_pago"]);
+    const idxValor = findIndex(["valor"]);
+    if (idxDate < 0 || (idxValorPago < 0 && idxValor < 0)){
+      throw new Error("Cabeçalho inválido. Certifique-se de ter colunas DATA e VALOR (ou VALOR PAGO).");
+    }
+    const rowsOut = [];
+    for (let i = 1; i < rows.length; i++){
+      const row = rows[i];
+      if (!row || row.every((cell) => (cell ?? "").toString().trim() === "")) continue;
+      const dateValue = parseExpenseDate(row[idxDate]);
+      if (!dateValue) continue;
+      const year = dateValue.getFullYear();
+      if (forcedYear && Number(forcedYear) !== year) continue;
+      const valueRaw = idxValorPago >= 0 ? row[idxValorPago] : row[idxValor];
+      const value = parseBRNumber(valueRaw);
+      if (!value) continue;
+      rowsOut.push({ year, month: dateValue.getMonth(), value });
+    }
+    return rowsOut;
+  }
+
+  async function readExpenseFile(file){
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    if (ext === "xlsx" || ext === "xls"){
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
+    }
+    const text = await file.text();
+    return parseCSV(text);
+  }
+
+  function buildSeries(rows){
+    const map = new Map();
+    for (const row of rows){
+      if (!map.has(row.year)){
+        map.set(row.year, new Array(12).fill(0));
+      }
+      map.get(row.year)[row.month] += row.value;
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([year, values]) => ({ year, values }));
+  }
+
+  function renderLegend(series){
+    els.legend.innerHTML = "";
+    const frag = document.createDocumentFragment();
+    series.forEach((serie, idx) => {
+      const item = document.createElement("div");
+      item.className = "expenseLegendItem";
+      const swatch = document.createElement("span");
+      swatch.className = "expenseLegendSwatch";
+      swatch.style.background = COLORS[idx % COLORS.length];
+      item.appendChild(swatch);
+      const label = document.createElement("span");
+      label.textContent = serie.year;
+      item.appendChild(label);
+      frag.appendChild(item);
+    });
+    els.legend.appendChild(frag);
+  }
+
+  function drawExpenseChart(){
+    const canvas = getExpenseCanvas();
+    if (!canvas) return;
+    const { ctx, w, h } = fitExpenseCanvas(canvas);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,.08)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(255,255,255,.08)";
+    ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+
+    const padding = { top: 24, right: 18, bottom: 36, left: 48 };
+    const plot = {
+      x: padding.left,
+      y: padding.top,
+      w: w - padding.left - padding.right,
+      h: h - padding.top - padding.bottom,
+    };
+
+    ctx.strokeStyle = "rgba(255,255,255,.08)";
+    ctx.beginPath();
+    ctx.moveTo(plot.x, plot.y);
+    ctx.lineTo(plot.x, plot.y + plot.h);
+    ctx.lineTo(plot.x + plot.w, plot.y + plot.h);
+    ctx.stroke();
+
+    const maxValue = Math.max(1, ...expenseSeries.flatMap((serie) => serie.values));
+    const yMax = maxValue * 1.1;
+    ctx.fillStyle = "rgba(233,238,252,.65)";
+    ctx.font = "11px system-ui";
+    for (let i = 0; i <= 4; i++){
+      const yVal = yMax * (1 - i / 4);
+      const y = plot.y + (plot.h * i) / 4;
+      ctx.fillText(moneyBR(yVal), 6, y + 4);
+      ctx.strokeStyle = "rgba(255,255,255,.05)";
+      ctx.beginPath();
+      ctx.moveTo(plot.x, y);
+      ctx.lineTo(plot.x + plot.w, y);
+      ctx.stroke();
+    }
+
+    const monthLabels = MONTHS.map((m) => m.label.slice(0, 3));
+    const stepX = plot.w / (monthLabels.length - 1);
+    ctx.fillStyle = "rgba(233,238,252,.7)";
+    monthLabels.forEach((label, idx) => {
+      const x = plot.x + stepX * idx;
+      ctx.fillText(label, x - 10, plot.y + plot.h + 22);
+    });
+
+    expenseSeries.forEach((serie, idx) => {
+      ctx.strokeStyle = COLORS[idx % COLORS.length];
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      serie.values.forEach((val, monthIdx) => {
+        const x = plot.x + stepX * monthIdx;
+        const y = plot.y + plot.h - (val / yMax) * plot.h;
+        if (monthIdx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      ctx.fillStyle = COLORS[idx % COLORS.length];
+      serie.values.forEach((val, monthIdx) => {
+        const x = plot.x + stepX * monthIdx;
+        const y = plot.y + plot.h - (val / yMax) * plot.h;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    });
+  }
+
+  async function handleExpenseLoad(){
+    showError("");
+    const files = [
+      { file: els.file1.files[0], year: els.year1.value.trim() },
+      { file: els.file2.files[0], year: els.year2.value.trim() },
+      { file: els.file3.files[0], year: els.year3.value.trim() },
+    ].filter((item) => item.file);
+
+    if (!files.length){
+      showError("Selecione pelo menos um arquivo de despesas.");
+      return;
+    }
+
+    try{
+      const allSeries = [];
+      for (const fileInfo of files){
+        const rows = await readExpenseFile(fileInfo.file);
+        const parsed = mapExpenseRows(rows, fileInfo.year);
+        const series = buildSeries(parsed);
+        allSeries.push(...series);
+      }
+      const uniqueYears = new Set();
+      expenseSeries = allSeries.filter((serie) => {
+        if (uniqueYears.has(serie.year)) return false;
+        uniqueYears.add(serie.year);
+        return true;
+      }).slice(0, 3);
+
+      if (!expenseSeries.length){
+        showError("Nenhum dado válido encontrado. Verifique o formato e o ano informado.");
+        els.status.textContent = "Nenhum arquivo carregado";
+        renderLegend([]);
+        drawExpenseChart();
+        return;
+      }
+
+      els.status.textContent = `Dados carregados: ${expenseSeries.map((s) => s.year).join(" / ")}`;
+      renderLegend(expenseSeries);
+      drawExpenseChart();
+    }catch(err){
+      showError(err?.message || "Erro ao processar o arquivo.");
+      els.status.textContent = "Nenhum arquivo carregado";
+    }
+  }
+
+  mountExpenseCanvas();
+  els.loadBtn.addEventListener("click", handleExpenseLoad);
+  window.addEventListener("resize", drawExpenseChart);
+  drawExpenseChart();
+}
+
+tabPanels.forEach((panel) => {
+  if (panel.dataset.tab !== "2") return;
+  initExpenses(panel);
 });
 
 const themeToggles = document.querySelectorAll(".themeToggle");
