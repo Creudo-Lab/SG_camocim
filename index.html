@@ -2813,6 +2813,21 @@ tabButtons.forEach(btn => {
 });
 
 setActiveTab("1");
+
+const expenseMenuButtons = Array.from(document.querySelectorAll(".expenseMenuBtn"));
+expenseMenuButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const parentNav = btn.closest(".expenseMenu");
+    const scopeButtons = parentNav
+      ? Array.from(parentNav.querySelectorAll(".expenseMenuBtn"))
+      : expenseMenuButtons;
+    scopeButtons.forEach((item) => {
+      const isActive = item === btn;
+      item.classList.toggle("active", isActive);
+      item.setAttribute("aria-current", isActive ? "page" : "false");
+    });
+  });
+});
 </script>
 
 <!-- PWA: registro do Service Worker (necessário para instalar como App) -->
