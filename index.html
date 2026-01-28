@@ -3132,11 +3132,10 @@ function initExpenses(panel){
     const header = rows[0].map((cell) => normalizeHeader(cell || ""));
     const findIndex = (options) => header.findIndex((h) => options.includes(h));
     const idxDate = findIndex(["data"]);
-    const idxValorPago = findIndex(["valor pago", "valorpago", "valor_pago"]);
     const idxValor = findIndex(["valor"]);
     const idxNatureza = findIndex(["natureza da despesa", "natureza", "natureza despesa", "nat despesa"]);
-    if (idxDate < 0 || (idxValorPago < 0 && idxValor < 0)){
-      throw new Error("Cabeçalho inválido. Certifique-se de ter colunas DATA e VALOR (ou VALOR PAGO).");
+    if (idxDate < 0 || idxValor < 0){
+      throw new Error("Cabeçalho inválido. Certifique-se de ter colunas DATA e VALOR.");
     }
     const rowsOut = [];
     for (let i = 1; i < rows.length; i++){
@@ -3146,7 +3145,7 @@ function initExpenses(panel){
       if (!dateValue) continue;
       const year = dateValue.getFullYear();
       if (forcedYear && Number(forcedYear) !== year) continue;
-      const valueRaw = idxValorPago >= 0 ? row[idxValorPago] : row[idxValor];
+      const valueRaw = row[idxValor];
       const value = parseBRNumber(valueRaw);
       if (!value) continue;
       const natureza = idxNatureza >= 0 ? row[idxNatureza] : "";
