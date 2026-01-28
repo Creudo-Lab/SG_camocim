@@ -815,6 +815,7 @@
       display:flex;
       gap:8px;
       margin:8px 0 10px;
+      flex-wrap:wrap;
     }
     .expenseFilterBtn{
       flex:1;
@@ -1302,6 +1303,7 @@
                     <div class="expenseFilterActions">
                       <button class="expenseFilterBtn" id="expenseElementSelectAll" type="button">Selecionar todos</button>
                       <button class="expenseFilterBtn" id="expenseElementRemoveZero" type="button">Remover valores zerados</button>
+                      <button class="expenseFilterBtn" id="expenseElementClear" type="button">Desselecionar</button>
                     </div>
                     <div class="expenseFilterOptions" id="expenseElementOptions"></div>
                     <div class="expenseFilterEmpty" id="expenseElementEmpty">Digite para buscar novos elementos.</div>
@@ -3035,12 +3037,14 @@ function initExpenses(panel){
     elementSearch: panel.querySelector("#expenseElementSearch"),
     elementSelectAll: panel.querySelector("#expenseElementSelectAll"),
     elementRemoveZero: panel.querySelector("#expenseElementRemoveZero"),
+    elementClear: panel.querySelector("#expenseElementClear"),
     elementOptions: panel.querySelector("#expenseElementOptions"),
     elementEmpty: panel.querySelector("#expenseElementEmpty"),
   };
   if (!els.loadBtn) return;
 
   const COLORS = ["#6ee7ff", "#f97316", "#8b5cf6"];
+  const AVG_COLOR = "#f97316";
   const ELEMENTS = [
     { code: "01", label: "Aposentadorias, Reserva Remunerada e Reformas" },
     { code: "03", label: "Pensões" },
@@ -3462,6 +3466,12 @@ function initExpenses(panel){
     els.elementSummary.textContent = `Total selecionado: ${moneyBR(total)} • Média simples (filtros): ${moneyBR(avg)}`;
   }
 
+  function getElementAverage(selectedElements, comparisonSeries){
+    if (!selectedElements.length || !comparisonSeries.length) return 0;
+    const total = selectedElements.reduce((acc, element) => acc + (element.total || 0), 0);
+    return total / (selectedElements.length * comparisonSeries.length);
+  }
+
   function drawExpenseChart(){
     const canvas = getExpenseCanvas();
     if (!canvas) return;
@@ -3549,6 +3559,7 @@ function initExpenses(panel){
         return { ...element, total };
       })
       .sort((a, b) => b.total - a.total);
+    const avgValue = getElementAverage(selectedElements, comparisonSeries);
     updateElementSummary(selectedElements);
 
     if (!comparisonSeries.length || !selectedElements.length){
@@ -3597,6 +3608,24 @@ function initExpenses(panel){
       ctx.moveTo(plot.x, y);
       ctx.lineTo(plot.x + plot.w, y);
       ctx.stroke();
+    }
+
+    if (avgValue > 0){
+      const avgY = plot.y + plot.h - (avgValue / yMax) * plot.h;
+      ctx.strokeStyle = AVG_COLOR;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(plot.x, avgY);
+      ctx.lineTo(plot.x + plot.w, avgY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = AVG_COLOR;
+      ctx.font = "11px system-ui";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "bottom";
+      const labelY = Math.max(plot.y + 14, avgY - 6);
+      ctx.fillText(`Média: ${moneyBR(avgValue)}`, plot.x + 6, labelY);
     }
 
     const groupCount = selectedElements.length;
@@ -3725,6 +3754,13 @@ function initExpenses(panel){
           }
         });
       }
+      renderElementOptions();
+      drawExpenseElementChart();
+    });
+  }
+  if (els.elementClear){
+    els.elementClear.addEventListener("click", () => {
+      selectedElementCodes.clear();
       renderElementOptions();
       drawExpenseElementChart();
     });
