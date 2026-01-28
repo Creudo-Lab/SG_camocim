@@ -1322,6 +1322,16 @@
                     <div class="expenseFilterEmpty" id="expenseElementEmpty">Digite para buscar novos elementos.</div>
                   </div>
                   <div class="expenseFilterCard">
+                    <div class="expenseFilterTitle">Fonte de recurso (FONTE_STN)</div>
+                    <div class="expenseFilterActions">
+                      <button class="expenseFilterBtn" id="expenseSourceSelectAll" type="button">Selecionar todos</button>
+                      <button class="expenseFilterBtn" id="expenseSourceRemoveZero" type="button">Remover valores zerados</button>
+                      <button class="expenseFilterBtn" id="expenseSourceClear" type="button">Desselecionar</button>
+                    </div>
+                    <div class="expenseFilterOptions" id="expenseSourceOptions"></div>
+                    <div class="expenseFilterEmpty" id="expenseSourceEmpty">Nenhuma fonte carregada.</div>
+                  </div>
+                  <div class="expenseFilterCard">
                     <div class="expenseFilterTitle">Legenda (anos)</div>
                     <div class="expenseLegend" id="expenseElementLegend"></div>
                   </div>
@@ -3053,6 +3063,11 @@ function initExpenses(panel){
     elementClear: panel.querySelector("#expenseElementClear"),
     elementOptions: panel.querySelector("#expenseElementOptions"),
     elementEmpty: panel.querySelector("#expenseElementEmpty"),
+    sourceSelectAll: panel.querySelector("#expenseSourceSelectAll"),
+    sourceRemoveZero: panel.querySelector("#expenseSourceRemoveZero"),
+    sourceClear: panel.querySelector("#expenseSourceClear"),
+    sourceOptions: panel.querySelector("#expenseSourceOptions"),
+    sourceEmpty: panel.querySelector("#expenseSourceEmpty"),
   };
   if (!els.loadBtn) return;
 
@@ -3149,9 +3164,14 @@ function initExpenses(panel){
   const selectedElementCodes = new Set(["30", "36", "39"]);
   let expenseSeries = [];
   let expenseElementTotals = [];
+  let expenseRows = [];
+  let expenseSources = [];
+  let expenseSourceTotals = [];
+  let selectedExpenseSources = new Set();
   let selectedElementYears = new Set();
   let elementChartState = { bars: [], plot: null, avgValue: 0 };
   let hideZeroElements = false;
+  let hideZeroSources = false;
 
   function showError(msg){
     els.error.style.display = msg ? "block" : "none";
@@ -3304,6 +3324,7 @@ function initExpenses(panel){
     const idxDate = findIndex(["data"]);
     const idxValor = findIndex(["valor"]);
     const idxNatureza = findIndex(["natureza da despesa", "natureza", "natureza despesa", "nat despesa"]);
+    const idxFonte = findIndex(["fonte_stn", "fonte stn", "fonte stn.", "fonte"]);
     if (idxDate < 0 || idxValor < 0){
       throw new Error("Cabeçalho inválido. Certifique-se de ter colunas DATA e VALOR.");
     }
@@ -3320,7 +3341,9 @@ function initExpenses(panel){
       if (!value) continue;
       const natureza = idxNatureza >= 0 ? row[idxNatureza] : "";
       const element = extractElementCode(natureza);
-      rowsOut.push({ year, month: dateValue.getMonth(), value, element });
+      const fonteRaw = idxFonte >= 0 ? row[idxFonte] : "";
+      const fonte = (fonteRaw ?? "").toString().trim() || "Sem fonte";
+      rowsOut.push({ year, month: dateValue.getMonth(), value, element, fonte });
     }
     return rowsOut;
   }
@@ -3365,6 +3388,53 @@ function initExpenses(panel){
       .map(([year, totals]) => ({ year, totals }));
   }
 
+  function buildSourceTotals(rows){
+    const map = new Map();
+    for (const row of rows){
+      if (!row.fonte) continue;
+      if (!map.has(row.year)){
+        map.set(row.year, {});
+      }
+      const entry = map.get(row.year);
+      const key = normalizeText(row.fonte);
+      entry[key] = (entry[key] || 0) + row.value;
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([year, totals]) => ({ year, totals }));
+  }
+
+  function collectExpenseSources(rows){
+    const map = new Map();
+    rows.forEach((row) => {
+      const label = row.fonte || "Sem fonte";
+      const key = normalizeText(label);
+      if (!map.has(key)){
+        map.set(key, label);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([key, label]) => ({ key, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  function getFilteredExpenseRows(){
+    if (!selectedExpenseSources.size) return [];
+    return expenseRows.filter((row) => selectedExpenseSources.has(normalizeText(row.fonte || "Sem fonte")));
+  }
+
+  function syncExpenseElementTotals(){
+    expenseElementTotals = buildElementTotals(getFilteredExpenseRows()).filter((serie) =>
+      expenseSeries.some((yearSerie) => yearSerie.year === serie.year)
+    );
+    const availableYears = getAvailableElementYears();
+    selectedElementYears = new Set(availableYears.filter((year) => selectedElementYears.has(year)));
+    if (!selectedElementYears.size && availableYears.length){
+      selectedElementYears = new Set(availableYears);
+    }
+    renderElementLegend(availableYears);
+  }
+
   function getAvailableElementYears(){
     return expenseElementTotals.map((serie) => serie.year);
   }
@@ -3388,6 +3458,14 @@ function initExpenses(panel){
     return years.reduce((acc, year) => {
       const serie = expenseElementTotals.find((entry) => entry.year === year);
       return acc + (serie?.totals[elementCode] || 0);
+    }, 0);
+  }
+
+  function getSourceTotalForYears(sourceKey, years){
+    if (!years.length) return 0;
+    return years.reduce((acc, year) => {
+      const serie = expenseSourceTotals.find((entry) => entry.year === year);
+      return acc + (serie?.totals[sourceKey] || 0);
     }, 0);
   }
 
@@ -3435,6 +3513,7 @@ function initExpenses(panel){
         }
         renderElementLegend(years);
         renderElementOptions();
+        renderSourceOptions();
         drawExpenseElementChart();
       });
       frag.appendChild(item);
@@ -3486,6 +3565,51 @@ function initExpenses(panel){
       } else {
         els.elementEmpty.textContent = "Nenhum elemento encontrado.";
         els.elementEmpty.style.display = "block";
+      }
+    }
+  }
+
+  function renderSourceOptions(){
+    if (!els.sourceOptions) return;
+    const years = getComparisonYears();
+    const activeYears = years.length ? years : getAvailableElementYears();
+    const matches = expenseSources.filter((source) => {
+      if (!hideZeroSources || !activeYears.length) return true;
+      return getSourceTotalForYears(source.key, activeYears) > 0;
+    });
+    els.sourceOptions.innerHTML = "";
+    const frag = document.createDocumentFragment();
+    matches.forEach((source) => {
+      const label = document.createElement("label");
+      label.className = "expenseFilterOption";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.dataset.source = source.key;
+      input.checked = selectedExpenseSources.has(source.key);
+      input.addEventListener("change", () => {
+        if (input.checked){
+          selectedExpenseSources.add(source.key);
+        } else {
+          selectedExpenseSources.delete(source.key);
+        }
+        syncExpenseElementTotals();
+        renderElementOptions();
+        drawExpenseElementChart();
+      });
+      label.appendChild(input);
+      const text = document.createElement("span");
+      text.textContent = source.label;
+      label.appendChild(text);
+      frag.appendChild(label);
+    });
+    els.sourceOptions.appendChild(frag);
+
+    if (els.sourceEmpty){
+      if (matches.length){
+        els.sourceEmpty.style.display = "none";
+      } else {
+        els.sourceEmpty.textContent = "Nenhuma fonte encontrada.";
+        els.sourceEmpty.style.display = "block";
       }
     }
   }
@@ -3764,6 +3888,10 @@ function initExpenses(panel){
         selectedElementYears = new Set();
         renderElementLegend([]);
         expenseElementTotals = [];
+        expenseRows = [];
+        expenseSources = [];
+        expenseSourceTotals = [];
+        selectedExpenseSources = new Set();
         drawExpenseChart();
         drawExpenseElementChart();
         return;
@@ -3771,19 +3899,23 @@ function initExpenses(panel){
 
       els.status.textContent = `Dados carregados: ${expenseSeries.map((s) => s.year).join(" / ")}`;
       renderLegend(expenseSeries);
-      expenseElementTotals = buildElementTotals(allRows).filter((serie) =>
-        expenseSeries.some((yearSerie) => yearSerie.year === serie.year)
-      );
-      const availableYears = getAvailableElementYears();
-      selectedElementYears = new Set(availableYears);
-      renderElementLegend(availableYears);
+      expenseRows = allRows;
+      expenseSources = collectExpenseSources(expenseRows);
+      selectedExpenseSources = new Set(expenseSources.map((source) => source.key));
+      expenseSourceTotals = buildSourceTotals(expenseRows);
+      syncExpenseElementTotals();
       renderElementOptions();
+      renderSourceOptions();
       drawExpenseChart();
       drawExpenseElementChart();
     }catch(err){
       showError(err?.message || "Erro ao processar o arquivo.");
       els.status.textContent = "Nenhum arquivo carregado";
       expenseElementTotals = [];
+      expenseRows = [];
+      expenseSources = [];
+      expenseSourceTotals = [];
+      selectedExpenseSources = new Set();
       selectedElementYears = new Set();
       renderElementLegend([]);
       drawExpenseElementChart();
@@ -3830,7 +3962,50 @@ function initExpenses(panel){
       drawExpenseElementChart();
     });
   }
+  if (els.sourceSelectAll){
+    els.sourceSelectAll.addEventListener("click", () => {
+      const years = getComparisonYears();
+      const activeYears = years.length ? years : getAvailableElementYears();
+      expenseSources.forEach((source) => {
+        if (hideZeroSources && activeYears.length && getSourceTotalForYears(source.key, activeYears) === 0) return;
+        selectedExpenseSources.add(source.key);
+      });
+      renderSourceOptions();
+      syncExpenseElementTotals();
+      renderElementOptions();
+      drawExpenseElementChart();
+    });
+  }
+  if (els.sourceRemoveZero){
+    els.sourceRemoveZero.addEventListener("click", () => {
+      hideZeroSources = !hideZeroSources;
+      els.sourceRemoveZero.classList.toggle("active", hideZeroSources);
+      if (hideZeroSources){
+        const years = getComparisonYears();
+        const activeYears = years.length ? years : getAvailableElementYears();
+        expenseSources.forEach((source) => {
+          if (activeYears.length && getSourceTotalForYears(source.key, activeYears) === 0){
+            selectedExpenseSources.delete(source.key);
+          }
+        });
+      }
+      renderSourceOptions();
+      syncExpenseElementTotals();
+      renderElementOptions();
+      drawExpenseElementChart();
+    });
+  }
+  if (els.sourceClear){
+    els.sourceClear.addEventListener("click", () => {
+      selectedExpenseSources.clear();
+      renderSourceOptions();
+      syncExpenseElementTotals();
+      renderElementOptions();
+      drawExpenseElementChart();
+    });
+  }
   renderElementOptions();
+  renderSourceOptions();
   window.addEventListener("resize", () => {
     drawExpenseChart();
     drawExpenseElementChart();
