@@ -770,11 +770,74 @@
       border-radius:999px;
       display:inline-block;
     }
+    .expenseContent{
+      display:none;
+    }
+    .expenseContent.active{
+      display:block;
+    }
+    .expenseElementLayout{
+      display:grid;
+      grid-template-columns: minmax(220px, 280px) 1fr;
+      gap:14px;
+      align-items:start;
+    }
+    .expenseElementFilters{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .expenseFilterCard{
+      background: rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      padding:12px;
+    }
+    .expenseFilterTitle{
+      font-size:12px;
+      font-weight:700;
+      margin:0 0 8px;
+      color:rgba(233,238,252,.85);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+    }
+    .expenseFilterOptions{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      font-size:12px;
+    }
+    .expenseFilterOption{
+      display:flex;
+      align-items:flex-start;
+      gap:8px;
+      cursor:pointer;
+      color:rgba(233,238,252,.86);
+    }
+    .expenseFilterOption input{
+      margin-top:2px;
+      accent-color: var(--accent);
+    }
+    .expenseElementChartWrap{
+      min-height:360px;
+    }
+
+    body[data-theme="light"] .expenseFilterCard{
+      background: rgba(255,255,255,.9);
+      border-color: rgba(15,23,42,.15);
+    }
+    body[data-theme="light"] .expenseFilterTitle{
+      color: rgba(15,23,42,.75);
+    }
+    body[data-theme="light"] .expenseFilterOption{
+      color: rgba(15,23,42,.85);
+    }
 
     @media (max-width: 1280px){
       .gridKpis{ grid-template-columns: repeat(3, minmax(180px, 1fr)); }
       .gridCharts{ grid-template-columns: 1fr; }
       .builder{ grid-template-columns: repeat(2, 1fr); }
+      .expenseElementLayout{ grid-template-columns: 1fr; }
     }
     @media (max-width: 980px){
       .app{ grid-template-columns: 1fr; }
@@ -1133,8 +1196,8 @@
         <div>
           <div class="sectionTitle">Menu</div>
           <nav class="expenseMenu" aria-label="Menu de despesas">
-            <button class="expenseMenuBtn active" type="button" aria-current="page">Por Elemento</button>
-            <button class="expenseMenuBtn" type="button">Por Grupo</button>
+            <button class="expenseMenuBtn active" type="button" aria-current="page" data-expense-view="elemento">Por Elemento</button>
+            <button class="expenseMenuBtn" type="button" data-expense-view="grupo">Por Grupo</button>
           </nav>
         </div>
       </aside>
@@ -1149,14 +1212,54 @@
           </div>
         </div>
         <div class="errorBox" id="expenseError"></div>
-        <section class="panel" style="margin:0 6px 14px;">
-          <div class="panelHeader">
-            <h3>Despesas por mês (linhas simples)</h3>
-            <div class="expenseLegend" id="expenseLegend"></div>
-          </div>
-          <div class="panelBody">
-            <div id="expenseChart" style="height:360px;"></div>
-          </div>
+        <section class="expenseContent active" data-expense-view="elemento">
+          <section class="panel" style="margin:0 6px 14px;">
+            <div class="panelHeader">
+              <h3>Comparativo por elemento</h3>
+              <div class="mini" id="expenseElementSummary">Selecione elementos para comparar.</div>
+            </div>
+            <div class="panelBody">
+              <div class="expenseElementLayout">
+                <div class="expenseElementFilters">
+                  <div class="expenseFilterCard">
+                    <div class="expenseFilterTitle">Elementos</div>
+                    <div class="expenseFilterOptions">
+                      <label class="expenseFilterOption">
+                        <input type="checkbox" data-element="30" checked />
+                        30 • Material de consumo
+                      </label>
+                      <label class="expenseFilterOption">
+                        <input type="checkbox" data-element="36" checked />
+                        36 • Prestação de serviço (pessoa física)
+                      </label>
+                      <label class="expenseFilterOption">
+                        <input type="checkbox" data-element="39" checked />
+                        39 • Prestação de serviços (pessoa jurídica)
+                      </label>
+                    </div>
+                  </div>
+                  <div class="expenseFilterCard">
+                    <div class="expenseFilterTitle">Legenda (anos)</div>
+                    <div class="expenseLegend" id="expenseElementLegend"></div>
+                  </div>
+                </div>
+                <div class="expenseElementChartWrap">
+                  <div id="expenseElementChart" style="height:360px;"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </section>
+        <section class="expenseContent" data-expense-view="grupo">
+          <section class="panel" style="margin:0 6px 14px;">
+            <div class="panelHeader">
+              <h3>Despesas por mês (linhas simples)</h3>
+              <div class="expenseLegend" id="expenseLegend"></div>
+            </div>
+            <div class="panelBody">
+              <div id="expenseChart" style="height:360px;"></div>
+            </div>
+          </section>
         </section>
       </main>
     </div>
@@ -2856,11 +2959,21 @@ function initExpenses(panel){
     error: panel.querySelector("#expenseError"),
     chart: panel.querySelector("#expenseChart"),
     legend: panel.querySelector("#expenseLegend"),
+    elementChart: panel.querySelector("#expenseElementChart"),
+    elementLegend: panel.querySelector("#expenseElementLegend"),
+    elementSummary: panel.querySelector("#expenseElementSummary"),
+    elementFilters: Array.from(panel.querySelectorAll("input[data-element]")),
   };
   if (!els.loadBtn) return;
 
   const COLORS = ["#6ee7ff", "#f97316", "#8b5cf6"];
+  const ELEMENTS = [
+    { code: "30", label: "Material de consumo" },
+    { code: "36", label: "Prestação de serviço (pessoa física)" },
+    { code: "39", label: "Prestação de serviços (pessoa jurídica)" },
+  ];
   let expenseSeries = [];
+  let expenseElementTotals = [];
 
   function showError(msg){
     els.error.style.display = msg ? "block" : "none";
@@ -2892,6 +3005,19 @@ function initExpenses(panel){
     return {ctx, w, h};
   }
 
+  function mountExpenseElementCanvas(){
+    if (!els.elementChart) return;
+    els.elementChart.innerHTML = "";
+    const c = document.createElement("canvas");
+    c.className = "chartCanvas";
+    c.dataset.role = "chart-element";
+    els.elementChart.appendChild(c);
+  }
+
+  function getExpenseElementCanvas(){
+    return els.elementChart?.querySelector("canvas[data-role='chart-element']");
+  }
+
   function parseExpenseDate(value){
     if (!value) return null;
     if (value instanceof Date && !isNaN(value)){
@@ -2920,6 +3046,18 @@ function initExpenses(panel){
     return normalizeText(header).replace(/\s+/g, " ");
   }
 
+  function extractElementCode(value){
+    if (!value) return "";
+    const parts = value.toString().match(/\d+/g) || [];
+    if (!parts.length) return "";
+    if (parts.length >= 2){
+      return parts[parts.length - 2].padStart(2, "0");
+    }
+    const digits = parts[0];
+    if (digits.length >= 2) return digits.slice(-2);
+    return "";
+  }
+
   function mapExpenseRows(rows, forcedYear){
     if (!rows.length) return [];
     const header = rows[0].map((cell) => normalizeHeader(cell || ""));
@@ -2927,6 +3065,7 @@ function initExpenses(panel){
     const idxDate = findIndex(["data"]);
     const idxValorPago = findIndex(["valor pago", "valorpago", "valor_pago"]);
     const idxValor = findIndex(["valor"]);
+    const idxNatureza = findIndex(["natureza da despesa", "natureza", "natureza despesa", "nat despesa"]);
     if (idxDate < 0 || (idxValorPago < 0 && idxValor < 0)){
       throw new Error("Cabeçalho inválido. Certifique-se de ter colunas DATA e VALOR (ou VALOR PAGO).");
     }
@@ -2941,7 +3080,9 @@ function initExpenses(panel){
       const valueRaw = idxValorPago >= 0 ? row[idxValorPago] : row[idxValor];
       const value = parseBRNumber(valueRaw);
       if (!value) continue;
-      rowsOut.push({ year, month: dateValue.getMonth(), value });
+      const natureza = idxNatureza >= 0 ? row[idxNatureza] : "";
+      const element = extractElementCode(natureza);
+      rowsOut.push({ year, month: dateValue.getMonth(), value, element });
     }
     return rowsOut;
   }
@@ -2971,6 +3112,21 @@ function initExpenses(panel){
       .map(([year, values]) => ({ year, values }));
   }
 
+  function buildElementTotals(rows){
+    const map = new Map();
+    for (const row of rows){
+      if (!row.element) continue;
+      if (!map.has(row.year)){
+        map.set(row.year, {});
+      }
+      const entry = map.get(row.year);
+      entry[row.element] = (entry[row.element] || 0) + row.value;
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([year, totals]) => ({ year, totals }));
+  }
+
   function renderLegend(series){
     els.legend.innerHTML = "";
     const frag = document.createDocumentFragment();
@@ -2987,6 +3143,51 @@ function initExpenses(panel){
       frag.appendChild(item);
     });
     els.legend.appendChild(frag);
+  }
+
+  function renderElementLegend(series){
+    if (!els.elementLegend) return;
+    els.elementLegend.innerHTML = "";
+    const frag = document.createDocumentFragment();
+    series.forEach((serie, idx) => {
+      const item = document.createElement("div");
+      item.className = "expenseLegendItem";
+      const swatch = document.createElement("span");
+      swatch.className = "expenseLegendSwatch";
+      swatch.style.background = COLORS[idx % COLORS.length];
+      item.appendChild(swatch);
+      const label = document.createElement("span");
+      label.textContent = serie.year;
+      item.appendChild(label);
+      frag.appendChild(item);
+    });
+    els.elementLegend.appendChild(frag);
+  }
+
+  function getSelectedElements(){
+    const selectedCodes = els.elementFilters
+      .filter((input) => input.checked)
+      .map((input) => input.dataset.element);
+    return ELEMENTS.filter((element) => selectedCodes.includes(element.code));
+  }
+
+  function updateElementSummary(selectedElements){
+    if (!els.elementSummary) return;
+    if (!expenseElementTotals.length){
+      els.elementSummary.textContent = "Nenhum dado de despesas carregado.";
+      return;
+    }
+    if (!selectedElements.length){
+      els.elementSummary.textContent = "Selecione pelo menos um elemento.";
+      return;
+    }
+    const total = selectedElements.reduce((acc, element) => {
+      const sum = expenseElementTotals.reduce((yearAcc, serie) => {
+        return yearAcc + (serie.totals[element.code] || 0);
+      }, 0);
+      return acc + sum;
+    }, 0);
+    els.elementSummary.textContent = `Total selecionado: ${moneyBR(total)}`;
   }
 
   function drawExpenseChart(){
@@ -3059,6 +3260,89 @@ function initExpenses(panel){
     });
   }
 
+  function drawExpenseElementChart(){
+    const canvas = getExpenseElementCanvas();
+    if (!canvas) return;
+    const { ctx, w, h } = fitExpenseCanvas(canvas);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,.08)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(255,255,255,.08)";
+    ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+
+    const selectedElements = getSelectedElements();
+    updateElementSummary(selectedElements);
+
+    if (!expenseElementTotals.length || !selectedElements.length){
+      ctx.fillStyle = "rgba(233,238,252,.7)";
+      ctx.font = "12px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillText("Sem dados para exibir.", w / 2, h / 2);
+      return;
+    }
+
+    const padding = { top: 24, right: 20, bottom: 48, left: 60 };
+    const plot = {
+      x: padding.left,
+      y: padding.top,
+      w: w - padding.left - padding.right,
+      h: h - padding.top - padding.bottom,
+    };
+
+    const maxValue = Math.max(
+      1,
+      ...expenseElementTotals.flatMap((serie) =>
+        selectedElements.map((element) => serie.totals[element.code] || 0)
+      )
+    );
+    const yMax = maxValue * 1.1;
+
+    ctx.strokeStyle = "rgba(255,255,255,.08)";
+    ctx.beginPath();
+    ctx.moveTo(plot.x, plot.y);
+    ctx.lineTo(plot.x, plot.y + plot.h);
+    ctx.lineTo(plot.x + plot.w, plot.y + plot.h);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(233,238,252,.65)";
+    ctx.font = "11px system-ui";
+    for (let i = 0; i <= 4; i++){
+      const yVal = yMax * (1 - i / 4);
+      const y = plot.y + (plot.h * i) / 4;
+      ctx.fillText(moneyBR(yVal), 6, y + 4);
+      ctx.strokeStyle = "rgba(255,255,255,.05)";
+      ctx.beginPath();
+      ctx.moveTo(plot.x, y);
+      ctx.lineTo(plot.x + plot.w, y);
+      ctx.stroke();
+    }
+
+    const groupCount = selectedElements.length;
+    const seriesCount = expenseElementTotals.length;
+    const groupWidth = plot.w / Math.max(1, groupCount);
+    const barGap = 8;
+    const maxBarWidth = 26;
+    const availableWidth = Math.max(1, groupWidth - barGap);
+    const barWidth = Math.min(maxBarWidth, availableWidth / Math.max(1, seriesCount));
+
+    selectedElements.forEach((element, elementIdx) => {
+      const groupX = plot.x + elementIdx * groupWidth + (groupWidth - barWidth * seriesCount) / 2;
+      expenseElementTotals.forEach((serie, serieIdx) => {
+        const value = serie.totals[element.code] || 0;
+        const barHeight = (value / yMax) * plot.h;
+        const x = groupX + serieIdx * barWidth;
+        const y = plot.y + plot.h - barHeight;
+        ctx.fillStyle = COLORS[serieIdx % COLORS.length];
+        ctx.fillRect(x, y, barWidth - 2, barHeight);
+      });
+      ctx.fillStyle = "rgba(233,238,252,.8)";
+      ctx.font = "12px system-ui";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText(element.code, plot.x + elementIdx * groupWidth + groupWidth / 2, plot.y + plot.h + 10);
+    });
+  }
+
   async function handleExpenseLoad(){
     showError("");
     const files = [
@@ -3074,11 +3358,13 @@ function initExpenses(panel){
 
     try{
       const allSeries = [];
+      const allRows = [];
       for (const fileInfo of files){
         const rows = await readExpenseFile(fileInfo.file);
         const parsed = mapExpenseRows(rows, fileInfo.year);
         const series = buildSeries(parsed);
         allSeries.push(...series);
+        allRows.push(...parsed);
       }
       const uniqueYears = new Set();
       expenseSeries = allSeries.filter((serie) => {
@@ -3091,23 +3377,42 @@ function initExpenses(panel){
         showError("Nenhum dado válido encontrado. Verifique o formato e o ano informado.");
         els.status.textContent = "Nenhum arquivo carregado";
         renderLegend([]);
+        renderElementLegend([]);
+        expenseElementTotals = [];
         drawExpenseChart();
+        drawExpenseElementChart();
         return;
       }
 
       els.status.textContent = `Dados carregados: ${expenseSeries.map((s) => s.year).join(" / ")}`;
       renderLegend(expenseSeries);
+      expenseElementTotals = buildElementTotals(allRows).filter((serie) =>
+        expenseSeries.some((yearSerie) => yearSerie.year === serie.year)
+      );
+      renderElementLegend(expenseElementTotals);
       drawExpenseChart();
+      drawExpenseElementChart();
     }catch(err){
       showError(err?.message || "Erro ao processar o arquivo.");
       els.status.textContent = "Nenhum arquivo carregado";
+      expenseElementTotals = [];
+      renderElementLegend([]);
+      drawExpenseElementChart();
     }
   }
 
   mountExpenseCanvas();
+  mountExpenseElementCanvas();
   els.loadBtn.addEventListener("click", handleExpenseLoad);
-  window.addEventListener("resize", drawExpenseChart);
+  els.elementFilters.forEach((input) => {
+    input.addEventListener("change", drawExpenseElementChart);
+  });
+  window.addEventListener("resize", () => {
+    drawExpenseChart();
+    drawExpenseElementChart();
+  });
   drawExpenseChart();
+  drawExpenseElementChart();
 }
 
 tabPanels.forEach((panel) => {
@@ -3166,6 +3471,13 @@ tabButtons.forEach(btn => {
 setActiveTab("1");
 
 const expenseMenuButtons = Array.from(document.querySelectorAll(".expenseMenuBtn"));
+function setExpenseView(view){
+  const panels = Array.from(document.querySelectorAll(".expenseContent"));
+  panels.forEach((panel) => {
+    panel.classList.toggle("active", panel.dataset.expenseView === view);
+  });
+  window.dispatchEvent(new Event("resize"));
+}
 expenseMenuButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     const parentNav = btn.closest(".expenseMenu");
@@ -3177,8 +3489,17 @@ expenseMenuButtons.forEach((btn) => {
       item.classList.toggle("active", isActive);
       item.setAttribute("aria-current", isActive ? "page" : "false");
     });
+    if (btn.dataset.expenseView){
+      setExpenseView(btn.dataset.expenseView);
+    }
   });
 });
+if (expenseMenuButtons.length){
+  const activeBtn = expenseMenuButtons.find((btn) => btn.classList.contains("active"));
+  if (activeBtn?.dataset.expenseView){
+    setExpenseView(activeBtn.dataset.expenseView);
+  }
+}
 </script>
 
 <!-- PWA: registro do Service Worker (necessário para instalar como App) -->
