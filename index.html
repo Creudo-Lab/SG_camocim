@@ -801,11 +801,30 @@
       text-transform:uppercase;
       letter-spacing:.08em;
     }
+    .expenseFilterSearch{
+      width:100%;
+      padding:9px 10px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color:var(--text);
+      font-size:12px;
+      outline:none;
+    }
     .expenseFilterOptions{
       display:flex;
       flex-direction:column;
       gap:8px;
       font-size:12px;
+      max-height:220px;
+      overflow:auto;
+      padding-right:4px;
+    }
+    .expenseFilterEmpty{
+      font-size:11px;
+      color:rgba(233,238,252,.55);
+      margin-top:10px;
+      display:none;
     }
     .expenseFilterOption{
       display:flex;
@@ -851,8 +870,16 @@
     body[data-theme="light"] .expenseFilterTitle{
       color: rgba(15,23,42,.75);
     }
+    body[data-theme="light"] .expenseFilterSearch{
+      background: rgba(15,23,42,.05);
+      border-color: rgba(15,23,42,.2);
+      color: #0f172a;
+    }
     body[data-theme="light"] .expenseFilterOption{
       color: rgba(15,23,42,.85);
+    }
+    body[data-theme="light"] .expenseFilterEmpty{
+      color: rgba(15,23,42,.55);
     }
 
     @media (max-width: 1280px){
@@ -1245,20 +1272,9 @@
                 <div class="expenseElementFilters">
                   <div class="expenseFilterCard">
                     <div class="expenseFilterTitle">Elementos</div>
-                    <div class="expenseFilterOptions">
-                      <label class="expenseFilterOption">
-                        <input type="checkbox" data-element="30" checked />
-                        30 • Material de consumo
-                      </label>
-                      <label class="expenseFilterOption">
-                        <input type="checkbox" data-element="36" checked />
-                        36 • Prestação de serviço (pessoa física)
-                      </label>
-                      <label class="expenseFilterOption">
-                        <input type="checkbox" data-element="39" checked />
-                        39 • Prestação de serviços (pessoa jurídica)
-                      </label>
-                    </div>
+                    <input id="expenseElementSearch" class="expenseFilterSearch" type="text" placeholder="Filtrar elementos..." />
+                    <div class="expenseFilterOptions" id="expenseElementOptions"></div>
+                    <div class="expenseFilterEmpty" id="expenseElementEmpty">Digite para buscar novos elementos.</div>
                   </div>
                   <div class="expenseFilterCard">
                     <div class="expenseFilterTitle">Legenda (anos)</div>
@@ -2986,16 +3002,102 @@ function initExpenses(panel){
     elementLegend: panel.querySelector("#expenseElementLegend"),
     elementSummary: panel.querySelector("#expenseElementSummary"),
     elementTooltip: panel.querySelector("#expenseElementTooltip"),
-    elementFilters: Array.from(panel.querySelectorAll("input[data-element]")),
+    elementSearch: panel.querySelector("#expenseElementSearch"),
+    elementOptions: panel.querySelector("#expenseElementOptions"),
+    elementEmpty: panel.querySelector("#expenseElementEmpty"),
   };
   if (!els.loadBtn) return;
 
   const COLORS = ["#6ee7ff", "#f97316", "#8b5cf6"];
   const ELEMENTS = [
-    { code: "30", label: "Material de consumo" },
-    { code: "36", label: "Prestação de serviço (pessoa física)" },
-    { code: "39", label: "Prestação de serviços (pessoa jurídica)" },
+    { code: "01", label: "Aposentadorias, Reserva Remunerada e Reformas" },
+    { code: "03", label: "Pensões" },
+    { code: "04", label: "Contratação por Tempo Determinado" },
+    { code: "05", label: "Outros Benefícios Previdenciários do servidor ou do militar" },
+    { code: "06", label: "Benefício Mensal ao Deficiente e ao Idoso" },
+    { code: "07", label: "Contribuição a Entidades Fechadas de Previdência" },
+    { code: "08", label: "Outros Benefícios Assistenciais do servidor e do militar" },
+    { code: "09", label: "Salário-Família" },
+    { code: "10", label: "Seguro Desemprego e Abono Salarial" },
+    { code: "11", label: "Vencimentos e Vantagens Fixas - Pessoal Civil" },
+    { code: "12", label: "Vencimentos e Vantagens Fixas - Pessoal Militar" },
+    { code: "13", label: "Obrigações Patronais" },
+    { code: "14", label: "Diárias - Civil" },
+    { code: "15", label: "Diárias - Militar" },
+    { code: "16", label: "Outras Despesas Variáveis - Pessoal Civil" },
+    { code: "17", label: "Outras Despesas Variáveis - Pessoal Militar" },
+    { code: "18", label: "Auxílio Financeiro a Estudantes" },
+    { code: "19", label: "Auxílio-Fardamento" },
+    { code: "20", label: "Auxílio Financeiro a Pesquisadores" },
+    { code: "21", label: "Juros sobre a Dívida por Contrato" },
+    { code: "22", label: "Outros Encargos sobre a Dívida por Contrato" },
+    { code: "23", label: "Juros, Deságios e Descontos da Dívida Mobiliária" },
+    { code: "24", label: "Outros Encargos sobre a Dívida Mobiliária" },
+    { code: "25", label: "Encargos sobre Operações de Crédito por Antecipação da Receita" },
+    { code: "26", label: "Obrigações decorrentes de Política Monetária" },
+    { code: "27", label: "Encargos pela Honra de Avais, Garantias, Seguros e Similares" },
+    { code: "28", label: "Remuneração de Cotas de Fundos Autárquicos" },
+    { code: "29", label: "Distribuição de Resultado de Empresas Estatais Dependentes" },
+    { code: "30", label: "Material de Consumo" },
+    { code: "31", label: "Premiações Culturais, Artísticas, Científicas, Desportivas e Outras" },
+    { code: "32", label: "Material, Bem ou Serviço para Distribuição Gratuita" },
+    { code: "33", label: "Passagens e Despesas com Locomoção" },
+    { code: "34", label: "Outras Despesas de Pessoal decorrentes de Contratos de Terceirização" },
+    { code: "35", label: "Serviços de Consultoria" },
+    { code: "36", label: "Outros Serviços de Terceiros - Pessoa Física" },
+    { code: "37", label: "Locação de Mão-de-Obra" },
+    { code: "38", label: "Arrendamento Mercantil" },
+    { code: "39", label: "Outros Serviços de Terceiros - Pessoa Jurídica" },
+    { code: "40", label: "Serviços de Tecnologia da Informação e Comunicação - Pessoa Jurídica" },
+    { code: "41", label: "Contribuições" },
+    { code: "42", label: "Auxílios" },
+    { code: "43", label: "Subvenções Sociais" },
+    { code: "45", label: "Subvenções Econômicas" },
+    { code: "46", label: "Auxílio-Alimentação" },
+    { code: "47", label: "Obrigações Tributárias e Contributivas" },
+    { code: "48", label: "Outros Auxílios Financeiros a Pessoas Físicas" },
+    { code: "49", label: "Auxílio-Transporte" },
+    { code: "51", label: "Obras e Instalações" },
+    { code: "52", label: "Equipamentos e Material Permanente" },
+    { code: "53", label: "Aposentadorias do RGPS - Área Rural" },
+    { code: "54", label: "Aposentadorias do RGPS - Área Urbana" },
+    { code: "55", label: "Pensões do RGPS - Área Rural" },
+    { code: "56", label: "Pensões do RGPS - Área Urbana" },
+    { code: "57", label: "Outros Benefícios do RGPS - Área Rural" },
+    { code: "58", label: "Outros Benefícios do RGPS - Área Urbana" },
+    { code: "59", label: "Pensões Especiais" },
+    { code: "61", label: "Aquisição de Imóveis" },
+    { code: "62", label: "Aquisição de Produtos para Revenda" },
+    { code: "63", label: "Aquisição de Títulos de Crédito" },
+    { code: "64", label: "Aquisição de Títulos Representativos de Capital já Integralizado" },
+    { code: "65", label: "Constituição ou Aumento de Capital de Empresas" },
+    { code: "66", label: "Concessão de Empréstimos e Financiamentos" },
+    { code: "67", label: "Depósitos Compulsórios" },
+    { code: "70", label: "Rateio pela Participação em Consórcio Público" },
+    { code: "71", label: "Principal da Dívida Contratual Resgatado" },
+    { code: "72", label: "Principal da Dívida Mobiliária Resgatado" },
+    { code: "73", label: "Correção Monetária ou Cambial da Dívida Contratual Resgatada" },
+    { code: "74", label: "Correção Monetária ou Cambial da Dívida Mobiliária Resgatada" },
+    { code: "75", label: "Correção Monetária da Dívida de Operações de Crédito por Antecipação de Receita" },
+    { code: "76", label: "Principal Corrigido da Dívida Mobiliária Refinanciado" },
+    { code: "77", label: "Principal Corrigido da Dívida Contratual Refinanciado" },
+    { code: "81", label: "Distribuição Constitucional ou Legal de Receitas" },
+    { code: "82", label: "Aporte de Recursos pelo Parceiro Público em Favor do Parceiro Privado Decorrente de Contrato de PPP" },
+    { code: "83", label: "Despesas Decorrentes de Contrato de PPP, exceto Subvenções Econômicas, Aporte e Fundo Garantidor" },
+    { code: "84", label: "Despesas Decorrentes da Participação em Fundos, Organismos, ou Entidades Assemelhadas, Nacionais e Internacionais" },
+    { code: "85", label: "Contrato de Gestão" },
+    { code: "86", label: "Compensações a Regimes de Previdência" },
+    { code: "91", label: "Sentenças Judiciais" },
+    { code: "92", label: "Despesas de Exercícios Anteriores" },
+    { code: "93", label: "Indenizações e Restituições" },
+    { code: "94", label: "Indenizações e Restituições Trabalhistas" },
+    { code: "95", label: "Indenização pela Execução de Trabalhos de Campo" },
+    { code: "96", label: "Ressarcimento de Despesas de Pessoal Requisitado" },
+    { code: "97", label: "Aporte para Cobertura do Déficit Atuarial do RPPS" },
+    { code: "98", label: "Despesa do Orçamento de Investimento" },
+    { code: "99", label: "A Classificar" },
   ];
+  const selectedElementCodes = new Set(["30", "36", "39"]);
   let expenseSeries = [];
   let expenseElementTotals = [];
   let elementChartState = { bars: [], plot: null };
@@ -3124,7 +3226,7 @@ function initExpenses(panel){
     }
     const digits = parts[0];
     if (digits.length >= 2) return digits.slice(-2);
-    return "";
+    return digits.padStart(2, "0");
   }
 
   function mapExpenseRows(rows, forcedYear){
@@ -3232,11 +3334,55 @@ function initExpenses(panel){
     els.elementLegend.appendChild(frag);
   }
 
+  function renderElementOptions(){
+    if (!els.elementOptions) return;
+    const query = normalizeText(els.elementSearch?.value || "");
+    const showSelectedOnly = !query;
+    const matches = ELEMENTS.filter((element) => {
+      if (showSelectedOnly) return selectedElementCodes.has(element.code);
+      const haystack = normalizeText(`${element.code} ${element.label}`);
+      return haystack.includes(query);
+    });
+    els.elementOptions.innerHTML = "";
+    const frag = document.createDocumentFragment();
+    matches.forEach((element) => {
+      const label = document.createElement("label");
+      label.className = "expenseFilterOption";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.dataset.element = element.code;
+      input.checked = selectedElementCodes.has(element.code);
+      input.addEventListener("change", () => {
+        if (input.checked){
+          selectedElementCodes.add(element.code);
+        } else {
+          selectedElementCodes.delete(element.code);
+        }
+        renderElementOptions();
+        drawExpenseElementChart();
+      });
+      label.appendChild(input);
+      const text = document.createElement("span");
+      text.textContent = `${element.code} • ${element.label}`;
+      label.appendChild(text);
+      frag.appendChild(label);
+    });
+    els.elementOptions.appendChild(frag);
+
+    if (els.elementEmpty){
+      if (matches.length){
+        els.elementEmpty.style.display = "none";
+      } else {
+        els.elementEmpty.textContent = showSelectedOnly
+          ? "Digite para buscar novos elementos."
+          : "Nenhum elemento encontrado.";
+        els.elementEmpty.style.display = "block";
+      }
+    }
+  }
+
   function getSelectedElements(){
-    const selectedCodes = els.elementFilters
-      .filter((input) => input.checked)
-      .map((input) => input.dataset.element);
-    return ELEMENTS.filter((element) => selectedCodes.includes(element.code));
+    return ELEMENTS.filter((element) => selectedElementCodes.has(element.code));
   }
 
   function updateElementSummary(selectedElements){
@@ -3488,9 +3634,10 @@ function initExpenses(panel){
   mountExpenseCanvas();
   mountExpenseElementCanvas();
   els.loadBtn.addEventListener("click", handleExpenseLoad);
-  els.elementFilters.forEach((input) => {
-    input.addEventListener("change", drawExpenseElementChart);
-  });
+  if (els.elementSearch){
+    els.elementSearch.addEventListener("input", renderElementOptions);
+  }
+  renderElementOptions();
   window.addEventListener("resize", () => {
     drawExpenseChart();
     drawExpenseElementChart();
