@@ -3337,9 +3337,8 @@ function initExpenses(panel){
   function renderElementOptions(){
     if (!els.elementOptions) return;
     const query = normalizeText(els.elementSearch?.value || "");
-    const showSelectedOnly = !query;
     const matches = ELEMENTS.filter((element) => {
-      if (showSelectedOnly) return selectedElementCodes.has(element.code);
+      if (!query) return true;
       const haystack = normalizeText(`${element.code} ${element.label}`);
       return haystack.includes(query);
     });
@@ -3373,9 +3372,7 @@ function initExpenses(panel){
       if (matches.length){
         els.elementEmpty.style.display = "none";
       } else {
-        els.elementEmpty.textContent = showSelectedOnly
-          ? "Digite para buscar novos elementos."
-          : "Nenhum elemento encontrado.";
+        els.elementEmpty.textContent = "Nenhum elemento encontrado.";
         els.elementEmpty.style.display = "block";
       }
     }
@@ -3484,7 +3481,14 @@ function initExpenses(panel){
     ctx.strokeStyle = "rgba(255,255,255,.08)";
     ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
 
-    const selectedElements = getSelectedElements();
+    const selectedElements = getSelectedElements()
+      .map((element) => {
+        const total = expenseElementTotals.reduce((acc, serie) => {
+          return acc + (serie.totals[element.code] || 0);
+        }, 0);
+        return { ...element, total };
+      })
+      .sort((a, b) => b.total - a.total);
     updateElementSummary(selectedElements);
 
     if (!expenseElementTotals.length || !selectedElements.length){
