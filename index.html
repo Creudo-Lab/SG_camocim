@@ -763,6 +763,19 @@
       border-radius:999px;
       background: rgba(255,255,255,.05);
       border:1px solid rgba(255,255,255,.12);
+      color:inherit;
+      font: inherit;
+    }
+    .expenseLegendToggle{
+      appearance:none;
+      cursor:pointer;
+    }
+    .expenseLegendToggle.is-off{
+      opacity:.45;
+    }
+    .expenseLegendToggle:focus-visible{
+      outline:2px solid rgba(110,231,255,.6);
+      outline-offset:2px;
     }
     .expenseLegendSwatch{
       width:10px;
@@ -865,7 +878,7 @@
     }
     .chartTooltip{
       position:absolute;
-      z-index:4;
+      z-index:6;
       padding:8px 10px;
       border-radius:10px;
       background: rgba(15,23,48,.95);
@@ -3136,7 +3149,8 @@ function initExpenses(panel){
   const selectedElementCodes = new Set(["30", "36", "39"]);
   let expenseSeries = [];
   let expenseElementTotals = [];
-  let elementChartState = { bars: [], plot: null };
+  let selectedElementYears = new Set();
+  let elementChartState = { bars: [], plot: null, avgValue: 0 };
   let hideZeroElements = false;
 
   function showError(msg){
@@ -3186,6 +3200,14 @@ function initExpenses(panel){
     }
   }
 
+  function showElementTooltip(content, x, y){
+    if (!els.elementTooltip) return;
+    els.elementTooltip.innerHTML = content;
+    els.elementTooltip.style.left = `${x}px`;
+    els.elementTooltip.style.top = `${y}px`;
+    els.elementTooltip.style.opacity = "1";
+  }
+
   function handleElementChartHover(event){
     const canvas = getExpenseElementCanvas();
     if (!canvas || !els.elementTooltip || !elementChartState.bars.length) return;
@@ -3199,16 +3221,25 @@ function initExpenses(panel){
       cursorY >= bar.y &&
       cursorY <= bar.y + bar.h
     );
-    if (!hit){
+    const offsetX = canvasRect.left - wrapRect.left;
+    const offsetY = canvasRect.top - wrapRect.top;
+    const tooltipX = offsetX + cursorX;
+    const tooltipY = offsetY + cursorY;
+    if (hit){
+      showElementTooltip(`<strong>${hit.element.label}</strong>${hit.year}: ${moneyBR(hit.value)}`, tooltipX, tooltipY);
+      return;
+    }
+    const plot = elementChartState.plot;
+    if (!plot){
       hideElementTooltip();
       return;
     }
-    const offsetX = canvasRect.left - wrapRect.left;
-    const offsetY = canvasRect.top - wrapRect.top;
-    els.elementTooltip.innerHTML = `<strong>${hit.element.label}</strong>${hit.year}: ${moneyBR(hit.value)}`;
-    els.elementTooltip.style.left = `${offsetX + hit.x + hit.w / 2}px`;
-    els.elementTooltip.style.top = `${offsetY + hit.y}px`;
-    els.elementTooltip.style.opacity = "1";
+    const isInsidePlot = cursorX >= plot.x && cursorX <= plot.x + plot.w && cursorY >= plot.y && cursorY <= plot.y + plot.h;
+    if (!isInsidePlot || !elementChartState.avgValue){
+      hideElementTooltip();
+      return;
+    }
+    showElementTooltip(`<strong>Média</strong>${moneyBR(elementChartState.avgValue)}`, tooltipX, tooltipY);
   }
 
   function mountExpenseElementCanvas(){
@@ -3334,16 +3365,18 @@ function initExpenses(panel){
       .map(([year, totals]) => ({ year, totals }));
   }
 
-  function getComparisonYears(){
-    if (!expenseElementTotals.length) return [];
-    const years = expenseElementTotals.map((serie) => serie.year);
-    const currentYear = Math.max(...years);
-    const previousYear = currentYear - 1;
-    return [previousYear, currentYear];
+  function getAvailableElementYears(){
+    return expenseElementTotals.map((serie) => serie.year);
   }
 
-  function buildElementComparisonSeries(){
-    const years = getComparisonYears();
+  function getComparisonYears(){
+    if (!expenseElementTotals.length) return [];
+    const years = getAvailableElementYears();
+    if (!selectedElementYears.size) return [];
+    return years.filter((year) => selectedElementYears.has(year));
+  }
+
+  function buildElementComparisonSeries(years = getComparisonYears()){
     return years.map((year) => {
       const found = expenseElementTotals.find((serie) => serie.year === year);
       return { year, totals: found ? found.totals : {} };
@@ -3376,20 +3409,34 @@ function initExpenses(panel){
     els.legend.appendChild(frag);
   }
 
-  function renderElementLegend(series){
+  function renderElementLegend(years){
     if (!els.elementLegend) return;
     els.elementLegend.innerHTML = "";
     const frag = document.createDocumentFragment();
-    series.forEach((serie, idx) => {
-      const item = document.createElement("div");
-      item.className = "expenseLegendItem";
+    years.forEach((year) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "expenseLegendItem expenseLegendToggle";
+      const isSelected = selectedElementYears.has(year);
+      item.classList.toggle("is-off", !isSelected);
+      item.setAttribute("aria-pressed", isSelected ? "true" : "false");
       const swatch = document.createElement("span");
       swatch.className = "expenseLegendSwatch";
-      swatch.style.background = COLORS[idx % COLORS.length];
+      swatch.style.background = getElementYearColor(year);
       item.appendChild(swatch);
       const label = document.createElement("span");
-      label.textContent = serie.year;
+      label.textContent = year;
       item.appendChild(label);
+      item.addEventListener("click", () => {
+        if (selectedElementYears.has(year)){
+          selectedElementYears.delete(year);
+        } else {
+          selectedElementYears.add(year);
+        }
+        renderElementLegend(years);
+        renderElementOptions();
+        drawExpenseElementChart();
+      });
       frag.appendChild(item);
     });
     els.elementLegend.appendChild(frag);
@@ -3453,11 +3500,15 @@ function initExpenses(panel){
       els.elementSummary.textContent = "Nenhum dado de despesas carregado.";
       return;
     }
+    const years = getComparisonYears();
+    if (!years.length){
+      els.elementSummary.textContent = "Selecione pelo menos um ano.";
+      return;
+    }
     if (!selectedElements.length){
       els.elementSummary.textContent = "Selecione pelo menos um elemento.";
       return;
     }
-    const years = getComparisonYears();
     const total = selectedElements.reduce((acc, element) => {
       return acc + getElementTotalForYears(element.code, years);
     }, 0);
@@ -3470,6 +3521,12 @@ function initExpenses(panel){
     if (!selectedElements.length || !comparisonSeries.length) return 0;
     const total = selectedElements.reduce((acc, element) => acc + (element.total || 0), 0);
     return total / (selectedElements.length * comparisonSeries.length);
+  }
+
+  function getElementYearColor(year){
+    const years = getAvailableElementYears();
+    const index = years.indexOf(year);
+    return COLORS[(index >= 0 ? index : 0) % COLORS.length];
   }
 
   function drawExpenseChart(){
@@ -3562,12 +3619,22 @@ function initExpenses(panel){
     const avgValue = getElementAverage(selectedElements, comparisonSeries);
     updateElementSummary(selectedElements);
 
-    if (!comparisonSeries.length || !selectedElements.length){
+    if (!comparisonSeries.length){
+      ctx.fillStyle = "rgba(233,238,252,.7)";
+      ctx.font = "12px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillText("Selecione pelo menos um ano.", w / 2, h / 2);
+      elementChartState = { bars: [], plot: null, avgValue: 0 };
+      hideElementTooltip();
+      return;
+    }
+
+    if (!selectedElements.length){
       ctx.fillStyle = "rgba(233,238,252,.7)";
       ctx.font = "12px system-ui";
       ctx.textAlign = "center";
       ctx.fillText("Sem dados para exibir.", w / 2, h / 2);
-      elementChartState = { bars: [], plot: null };
+      elementChartState = { bars: [], plot: null, avgValue: 0 };
       hideElementTooltip();
       return;
     }
@@ -3620,12 +3687,6 @@ function initExpenses(panel){
       ctx.lineTo(plot.x + plot.w, avgY);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = AVG_COLOR;
-      ctx.font = "11px system-ui";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "bottom";
-      const labelY = Math.max(plot.y + 14, avgY - 6);
-      ctx.fillText(`Média: ${moneyBR(avgValue)}`, plot.x + 6, labelY);
     }
 
     const groupCount = selectedElements.length;
@@ -3644,7 +3705,7 @@ function initExpenses(panel){
         const barHeight = (value / yMax) * plot.h;
         const x = groupX + serieIdx * barWidth;
         const y = plot.y + plot.h - barHeight;
-        ctx.fillStyle = COLORS[serieIdx % COLORS.length];
+        ctx.fillStyle = getElementYearColor(serie.year);
         const barActualWidth = barWidth - 2;
         ctx.fillRect(x, y, barActualWidth, barHeight);
         bars.push({
@@ -3663,7 +3724,7 @@ function initExpenses(panel){
       ctx.textBaseline = "top";
       ctx.fillText(element.code, plot.x + elementIdx * groupWidth + groupWidth / 2, plot.y + plot.h + 10);
     });
-    elementChartState = { bars, plot: { ...plot }, yMax };
+    elementChartState = { bars, plot: { ...plot }, yMax, avgValue };
   }
 
   async function handleExpenseLoad(){
@@ -3700,6 +3761,7 @@ function initExpenses(panel){
         showError("Nenhum dado válido encontrado. Verifique o formato e o ano informado.");
         els.status.textContent = "Nenhum arquivo carregado";
         renderLegend([]);
+        selectedElementYears = new Set();
         renderElementLegend([]);
         expenseElementTotals = [];
         drawExpenseChart();
@@ -3712,7 +3774,9 @@ function initExpenses(panel){
       expenseElementTotals = buildElementTotals(allRows).filter((serie) =>
         expenseSeries.some((yearSerie) => yearSerie.year === serie.year)
       );
-      renderElementLegend(buildElementComparisonSeries());
+      const availableYears = getAvailableElementYears();
+      selectedElementYears = new Set(availableYears);
+      renderElementLegend(availableYears);
       renderElementOptions();
       drawExpenseChart();
       drawExpenseElementChart();
@@ -3720,6 +3784,7 @@ function initExpenses(panel){
       showError(err?.message || "Erro ao processar o arquivo.");
       els.status.textContent = "Nenhum arquivo carregado";
       expenseElementTotals = [];
+      selectedElementYears = new Set();
       renderElementLegend([]);
       drawExpenseElementChart();
     }
